@@ -732,6 +732,7 @@ local function createNametag(player, character)
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
+rainbowContainer.Visible = false -- Disable rainbow pillar border
 	rainbowContainer.BorderSizePixel = 0
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
 	rainbowContainer.AnchorPoint = Vector2.new(0, 0)
@@ -1871,7 +1872,7 @@ local function createNametag(player, character)
 		buildRainbowBorder()
 
 		if SETTINGS.RainbowBannerEnabled then
-			rainbowContainer.Visible = true
+			rainbowContainer.Visible = false
 			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
 			for i, data in ipairs(rainbowSegments) do
 				local hue = ((i - 1) / RAINBOW_SEGMENT_COUNT + hueOffset) % 1
