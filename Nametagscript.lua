@@ -603,6 +603,7 @@ local function createNametag(player, character)
 	starCircle.Position = UDim2.new(0, 8, 0.5, -29)
 	starCircle.BackgroundColor3 = SETTINGS.DarkInner
 	starCircle.BorderSizePixel = 0
+	starCircle.ClipsDescendants = true
 	starCircle.ZIndex = 2
 	starCircle.Parent = panel
 
@@ -656,7 +657,7 @@ local function createNametag(player, character)
 	customLogo.Size = UDim2.new(1, -8, 1, -8)
 	customLogo.Position = UDim2.fromOffset(4, 4)
 	customLogo.Image = customLogoAsset or ""
-	customLogo.ScaleType = Enum.ScaleType.Fit
+	customLogo.ScaleType = Enum.ScaleType.Crop
 	customLogo.ImageColor3 = SETTINGS.White
 	customLogo.ZIndex = 3
 	customLogo.Visible = customLogoAsset ~= nil
@@ -759,6 +760,7 @@ local function createNametag(player, character)
 	logoCircle.Size = UDim2.fromScale(1, 1)
 	logoCircle.BackgroundColor3 = SETTINGS.DarkInner
 	logoCircle.BorderSizePixel = 0
+	logoCircle.ClipsDescendants = true
 	logoCircle.Parent = logoBillboard
 
 	local logoCorner = Instance.new("UICorner")
@@ -806,7 +808,7 @@ local function createNametag(player, character)
 	customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
 	customLogoDistant.Position = UDim2.fromOffset(4, 4)
 	customLogoDistant.Image = customLogoAsset or ""
-	customLogoDistant.ScaleType = Enum.ScaleType.Fit
+	customLogoDistant.ScaleType = Enum.ScaleType.Crop
 	customLogoDistant.ImageColor3 = SETTINGS.White
 	customLogoDistant.ZIndex = 2
 	customLogoDistant.Visible = customLogoAsset ~= nil
