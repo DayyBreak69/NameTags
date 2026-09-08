@@ -44,7 +44,7 @@ local SETTINGS = {
 
 			Overlay = {
 				Enabled = true,
-				Type = "ChromeSweep",
+				Type = "Prism",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
@@ -988,7 +988,7 @@ local function createNametag(player, character)
 
 	local overlayConfig = tagConfig.Overlay or {
 		Enabled = true,
-		Type = "ChromeSweep",
+		Type = "Prism",
 		Speed = 1.2,
 		Opacity = 0.55,
 		Glow = true,
