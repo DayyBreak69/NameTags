@@ -45,7 +45,7 @@ local SETTINGS = {
 			Overlay = {
 				-- Banner overlay system. Change Type to test an overlay.
 				Enabled = true,
-				Type = "Prism",
+				Type = "Starlight",
 				Speed = 0.35,
 				Glow = true,
 				GlowStrength = 2,
@@ -182,7 +182,7 @@ local SETTINGS = {
 
 
 	-- RAINBOW BANNER BORDER
-	RainbowBannerEnabled = true,
+	RainbowBannerEnabled = false,
 	RainbowBannerSpeed = 70, -- smooth continuous movement
 	RainbowBannerThickness = 3,
 	RainbowBannerGlowThickness = 6,
@@ -542,6 +542,19 @@ local function removeNametag(character)
 		return
 	end
 
+	-- Remove the old procedural rainbow border from any tag created by
+	-- previous versions. The border was responsible for the rainbow
+	-- pillars around the banner.
+	for _, obj in ipairs(character:GetDescendants()) do
+		if obj.Name == "RainbowBannerBorder"
+			or obj.Name:match("^RainbowSegment%d+$")
+			or obj.Name == "SoftGlow" then
+			if obj:IsA("Frame") then
+				obj:Destroy()
+			end
+		end
+	end
+
 	-- Clean up tags left behind by previous versions of this script.
 	-- Earlier builds used several different BillboardGui names, so removing
 	-- only "CustomDayBreakNametag" could leave an old overlay/sweep alive.
@@ -729,126 +742,27 @@ local function createNametag(player, character)
 	-- do not render gradient strokes correctly.
 	--==================================================
 
+	--==================================================
+	-- EXTERNAL RAINBOW BORDER
+	-- DISABLED: this old procedural segment system created the
+	-- unwanted rainbow pillars around the banner.
+	--==================================================
+
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
-rainbowContainer.Visible = false -- Disable rainbow pillar border
 	rainbowContainer.BorderSizePixel = 0
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
-	rainbowContainer.AnchorPoint = Vector2.new(0, 0)
 	rainbowContainer.Position = UDim2.fromScale(0, 0)
-	rainbowContainer.ClipsDescendants = false
-	rainbowContainer.ZIndex = 50
+	rainbowContainer.Visible = false
 	rainbowContainer.Parent = billboard
 
 	local rainbowSegments = {}
-	local RAINBOW_SEGMENT_COUNT = 61
-	local RAINBOW_THICKNESS = SETTINGS.RainbowBannerThickness
-	local RAINBOW_RADIUS = 20
-
-	for i = 1, RAINBOW_SEGMENT_COUNT do
-		local segment = Instance.new("Frame")
-		segment.Name = "RainbowSegment" .. i
-		segment.BackgroundColor3 = Color3.fromHSV((i - 1) / RAINBOW_SEGMENT_COUNT, 1, 1)
-		segment.BorderSizePixel = 0
-		segment.AnchorPoint = Vector2.new(0.5, 0.5)
-		segment.ZIndex = 50
-		segment.Parent = rainbowContainer
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(1, 0)
-		corner.Parent = segment
-
-		local glow = Instance.new("UIStroke")
-		glow.Name = "SoftGlow"
-		glow.Thickness = 2
-		glow.Transparency = 0.70
-		glow.Color = segment.BackgroundColor3
-		glow.ZIndex = 49
-		glow.Parent = segment
-
-		table.insert(rainbowSegments, {frame = segment, glow = glow})
-	end
-
-	local rainbowLastWidth = 0
-	local rainbowLastHeight = 0
 
 	local function buildRainbowBorder()
-		local size = rainbowContainer.AbsoluteSize
-		local w, h = size.X, size.Y
-		if w <= 1 or h <= 1 then
-			return
-		end
-
-		if math.abs(w - rainbowLastWidth) < 0.5 and math.abs(h - rainbowLastHeight) < 0.5 then
-			return
-		end
-		rainbowLastWidth = w
-		rainbowLastHeight = h
-
-		local radius = math.min(RAINBOW_RADIUS, (h * 0.5) - 1, (w * 0.5) - 1)
-		local points = {}
-
-		local function addPoint(x, y)
-			table.insert(points, Vector2.new(x, y))
-		end
-
-		-- Top edge
-		for i = 0, 7 do
-			local t = i / 7
-			addPoint(radius + (w - 2 * radius) * t, 0)
-		end
-		-- Top-right corner
-		for i = 1, 8 do
-			local a = -math.pi / 2 + (math.pi / 2) * (i / 8)
-			addPoint(w - radius + math.cos(a) * radius, radius + math.sin(a) * radius)
-		end
-		-- Right edge
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(w, radius + (h - 2 * radius) * t)
-		end
-		-- Bottom-right corner
-		for i = 1, 8 do
-			local a = 0 + (math.pi / 2) * (i / 8)
-			addPoint(w - radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
-		end
-		-- Bottom edge
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(w - radius - (w - 2 * radius) * t, h)
-		end
-		-- Bottom-left corner
-		for i = 1, 8 do
-			local a = math.pi / 2 + (math.pi / 2) * (i / 8)
-			addPoint(radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
-		end
-		-- Left edge
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(0, h - radius - (h - 2 * radius) * t)
-		end
-		-- Top-left corner
-		for i = 1, 8 do
-			local a = math.pi + (math.pi / 2) * (i / 8)
-			addPoint(radius + math.cos(a) * radius, radius + math.sin(a) * radius)
-		end
-
-		for i, data in ipairs(rainbowSegments) do
-			local p1 = points[i]
-			local p2 = points[(i % #points) + 1]
-			if p1 and p2 then
-				local delta = p2 - p1
-				local length = delta.Magnitude + 2
-				local midpoint = (p1 + p2) * 0.5
-				data.frame.Position = UDim2.fromOffset(midpoint.X, midpoint.Y)
-				data.frame.Size = UDim2.fromOffset(length, RAINBOW_THICKNESS)
-				data.frame.Rotation = math.deg(math.atan2(delta.Y, delta.X))
-			end
-		end
+		-- Intentionally disabled.
 	end
 
-	buildRainbowBorder()
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1120,7 +1034,7 @@ rainbowContainer.Visible = false -- Disable rainbow pillar border
 				table.insert(twinkleObjects, f)
 			end
 
-		elseif overlayType == "Prism" then
+		elseif overlayType == "Starlight" then
 			for i = 1, 5 do
 				local f = addOverlay("Prism" .. i)
 				f.Size = UDim2.new(0, 7, 1, 0)
@@ -1869,20 +1783,8 @@ rainbowContainer.Visible = false -- Disable rainbow pillar border
 		-- Each segment gets a smoothly moving HSV hue.
 		--==================================================
 
-		buildRainbowBorder()
-
-		if SETTINGS.RainbowBannerEnabled then
-			rainbowContainer.Visible = false
-			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
-			for i, data in ipairs(rainbowSegments) do
-				local hue = ((i - 1) / RAINBOW_SEGMENT_COUNT + hueOffset) % 1
-				local color = Color3.fromHSV(hue, 1, 1)
-				data.frame.BackgroundColor3 = color
-				data.glow.Color = color
-			end
-		else
-			rainbowContainer.Visible = false
-		end
+		-- External rainbow border intentionally disabled.
+		rainbowContainer.Visible = false
 
 		--==================================================
 		-- GLOW
@@ -2038,7 +1940,7 @@ rainbowContainer.Visible = false -- Disable rainbow pillar border
 				local ot = overlayTime
 
 				for i, f in ipairs(movingObjects) do
-					if overlayType == "Prism" then
+					if overlayType == "Starlight" then
 						local speed = 0.16 + i * 0.018
 						f.Position = UDim2.new(-0.45 + ((ot * speed) % 1.55), 0, 0, 0)
 					elseif overlayType == "SpeedLines" then
@@ -2332,7 +2234,21 @@ local function syncNametags()
 
 		if character then
 			if shouldShowNametag(player) then
-				if not character:FindFirstChild("CustomDayBreakNametag") then
+				local existingTag = character:FindFirstChild("CustomDayBreakNametag")
+				local needsRebuild = false
+
+				if existingTag then
+					if existingTag:GetAttribute("DayBreakNametagVersion") ~= "BannerOverlayV2" then
+						needsRebuild = true
+					elseif existingTag:FindFirstChild("RainbowBannerBorder", true) then
+						needsRebuild = true
+					end
+				end
+
+				if not existingTag or needsRebuild then
+					if existingTag then
+						existingTag:Destroy()
+					end
 					task.spawn(function()
 						createNametag(player, character)
 					end)
