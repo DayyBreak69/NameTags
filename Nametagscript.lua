@@ -37,21 +37,21 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			DisplayName = "DayDay",
+			DisplayName = "DayBreak",
 			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-			DisplayName = "Day's Bitch",
+			DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
 
 		["Chloeeafm"] = {
 			Role = "Admin",
-			DisplayName = "Owned By Nigger",
-			Banner = "Chloe123.png",
+			DisplayName = "Owned By Chloe",
+			Banner = "Chloe.png",
 			BackgroundTransparency = 0.05,
 		},
 
@@ -226,8 +226,8 @@ local function downloadBanner(filename)
 
 	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
 
-	-- Executors can cache custom assets by file path. Use a fresh local
-	-- filename every script execution so edited GitHub banners refresh.
+	-- Use a fresh local filename each script execution so an edited
+	-- GitHub banner cannot be replaced by an old executor asset cache.
 	local localPath =
 		BANNER_FOLDER .. "/" ..
 		safeName:gsub("%.png$", "") .. "_" .. BANNER_SESSION .. ".png"
@@ -242,30 +242,61 @@ local function downloadBanner(filename)
 		pcall(makefolder, BANNER_FOLDER)
 	end
 
-	-- Cache-bust GitHub too.
-	local url = BANNER_BASE_URL .. safeName .. "?v=" .. BANNER_SESSION
+	local url = BANNER_BASE_URL .. safeName
+	local body = nil
 
-	local result = httpRequest({
-		Url = url,
-		Method = "GET",
-	})
+	-- Use game:HttpGet first. This is important because some executors
+	-- return binary GitHub PNG data correctly through HttpGet but do not
+	-- expose it correctly through their request() response object.
+	local okHttp, httpBody = pcall(function()
+		return game:HttpGet(url)
+	end)
 
-	if not result or tonumber(result.StatusCode) ~= 200 or not result.Body then
-		warn("[DayBreak] Failed to download banner:", safeName)
+	if okHttp and type(httpBody) == "string" and #httpBody > 8 then
+		-- Check for the PNG signature before saving it.
+		local pngSignature = "\137PNG\r\n\26\n"
+		if httpBody:sub(1, 8) == pngSignature then
+			body = httpBody
+		end
+	end
+
+	-- Fallback to the executor request API.
+	if not body then
+		local result = httpRequest({
+			Url = url,
+			Method = "GET",
+		})
+
+		if result and tonumber(result.StatusCode) == 200 and type(result.Body) == "string" then
+			body = result.Body
+		end
+	end
+
+	if not body then
+		warn("[DayBreak] Failed to download valid PNG banner:", safeName)
 		return nil
 	end
 
-	local ok = pcall(function()
-		writefile(localPath, result.Body)
+	local okWrite = pcall(function()
+		writefile(localPath, body)
 	end)
 
-	if not ok then
+	if not okWrite then
 		warn("[DayBreak] Failed to save banner:", localPath)
 		return nil
 	end
 
+	-- Never reuse an older in-memory asset for this path.
 	AssetCache[localPath] = nil
-	return loadLocalAsset(localPath)
+
+	local asset = loadLocalAsset(localPath)
+
+	if not asset then
+		warn("[DayBreak] Banner downloaded but could not be loaded:", safeName)
+		return nil
+	end
+
+	return asset
 end
 
 local function getTagConfig(player)
@@ -428,8 +459,10 @@ local function createNametag(player, character)
 			backgroundImage.BackgroundTransparency = 1
 			backgroundImage.Image = asset
 			backgroundImage.ImageTransparency = tagConfig.BackgroundTransparency or 0
-			backgroundImage.ScaleType = Enum.ScaleType.Crop
-			backgroundImage.ZIndex = 0
+			backgroundImage.ScaleType = Enum.ScaleType.Stretch
+			backgroundImage.ImageColor3 = Color3.new(1, 1, 1)
+			backgroundImage.Visible = true
+			backgroundImage.ZIndex = 1
 			backgroundImage.Parent = panel
 
 			local backgroundCorner = Instance.new("UICorner")
@@ -456,7 +489,7 @@ local function createNametag(player, character)
 	starCircle.Position = UDim2.new(0, 8, 0.5, -29)
 	starCircle.BackgroundColor3 = SETTINGS.DarkInner
 	starCircle.BorderSizePixel = 0
-	starCircle.ZIndex = 1
+	starCircle.ZIndex = 2
 	starCircle.Parent = panel
 
 	local circleCorner = Instance.new("UICorner")
@@ -482,7 +515,7 @@ local function createNametag(player, character)
 	starGlow.TextTransparency = 0.65
 	starGlow.TextScaled = true
 	starGlow.Font = Enum.Font.GothamBlack
-	starGlow.ZIndex = 1
+	starGlow.ZIndex = 2
 	starGlow.Parent = starCircle
 
 	--==================================================
@@ -498,7 +531,7 @@ local function createNametag(player, character)
 	star.Font = Enum.Font.GothamBlack
 	star.TextStrokeColor3 = SETTINGS.Orange
 	star.TextStrokeTransparency = 0.2
-	star.ZIndex = 2
+	star.ZIndex = 3
 	star.Parent = starCircle
 
 	--==================================================
@@ -523,7 +556,7 @@ local function createNametag(player, character)
 	nameLabel.TextStrokeColor3 = SETTINGS.Orange
 	nameLabel.TextStrokeTransparency = 0.15
 
-	nameLabel.ZIndex = 2
+	nameLabel.ZIndex = 3
 	nameLabel.Parent = panel
 
 	--==================================================
