@@ -65,7 +65,6 @@ local SETTINGS = {
 			Banner = "Chloe.png",
 			BackgroundTrasparency = 0.05,
 		},
-
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
 		--	Banner = "Friend1.png",
