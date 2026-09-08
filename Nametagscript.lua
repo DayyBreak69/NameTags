@@ -49,13 +49,13 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-		DisplayName = "DayDay",
+		DisplayName = "DayBreak",
 			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-		DisplayName = "Day's Bitch",
+		DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
@@ -244,18 +244,35 @@ local function downloadBanner(filename)
 		pcall(makefolder, BANNER_FOLDER)
 	end
 
-	local result = httpRequest({
-		Url = BANNER_BASE_URL .. safeName,
-		Method = "GET",
-	})
+	-- game:HttpGet is used first because some executors expose
+	-- executor requests differently for binary/raw GitHub files.
+	local url = BANNER_BASE_URL .. safeName
+	local body = nil
 
-	if not result or tonumber(result.StatusCode) ~= 200 or not result.Body then
+	local okHttp, httpBody = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+		body = httpBody
+	else
+		-- Fallback for executors where game:HttpGet is restricted.
+		local result = httpRequest({
+			Url = url,
+			Method = "GET",
+		})
+		if result and tonumber(result.StatusCode) == 200 and result.Body then
+			body = result.Body
+		end
+	end
+
+	if not body then
 		warn("[DayBreak] Failed to download banner:", safeName)
 		return nil
 	end
 
 	local ok = pcall(function()
-		writefile(localPath, result.Body)
+		writefile(localPath, body)
 	end)
 
 	if not ok then
