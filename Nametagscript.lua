@@ -27,19 +27,6 @@ local SETTINGS = {
 	-- Use Roblox UserIds when possible so tags stay tied to the correct person.
 	-- Banner is ONLY the filename, for example: "DayyBreak66.png"
 	PlayerTags = {
-
-		-- ==================================================
-		-- CUSTOM NAME SETTINGS
-		-- Change DisplayName to control what appears on the nametag.
-		-- ==================================================
-		-- Example:
-		-- ["FriendUsername"] = {
-		--	Role = "FRIEND",
-		--	DisplayName = "The Name I Want Shown",
-		--	Banner = "Friend.png",
-		--	BackgroundTransparency = 0.05,
-		-- },
-
 		-- Recommended: use UserId
 		-- [123456789] = {
 		--	Role = "FRIEND",
@@ -49,22 +36,15 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-		DisplayName = "DayBreak",
-			Banner = "Daybreak.png",
+			Banner = "DayyBreak66.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-		DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
-		["Chloeeafm"] = {
-			Role = "Admin",
-		DisplayName = "Owned By Nigger",
-			Banner = "Chloe123.png",
-			BackgroundTrasparency = 0.05,
-		},
+
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
 		--	Banner = "Friend1.png",
@@ -198,6 +178,8 @@ local BANNER_BASE_URL =
 	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/banners/"
 
 local BANNER_FOLDER = "DayBreak/Banners"
+-- Fresh cache key for each script execution; prevents stale banner images.
+local BANNER_SESSION = tostring(math.floor(os.clock() * 1000000))
 
 local function loadLocalAsset(path)
 	if not getAsset or not path or path == "" then
@@ -232,12 +214,12 @@ local function downloadBanner(filename)
 	end
 
 	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
-	local localPath = BANNER_FOLDER .. "/" .. safeName
 
-	-- Use the existing local file when it is already cached.
-	if isfile and isfile(localPath) then
-		return loadLocalAsset(localPath)
-	end
+	-- Executors can cache custom assets by file path. Use a fresh local
+	-- filename every script execution so edited GitHub banners refresh.
+	local localPath =
+		BANNER_FOLDER .. "/" ..
+		safeName:gsub("%.png$", "") .. "_" .. BANNER_SESSION .. ".png"
 
 	if not writefile then
 		warn("[DayBreak] Executor does not support writefile; cannot cache GitHub banners.")
@@ -249,42 +231,21 @@ local function downloadBanner(filename)
 		pcall(makefolder, BANNER_FOLDER)
 	end
 
-	-- game:HttpGet is used first because some executors expose
-	-- executor requests differently for binary/raw GitHub files.
-	local url = BANNER_BASE_URL .. safeName
-	local body = nil
+	-- Cache-bust GitHub too.
+	local url = BANNER_BASE_URL .. safeName .. "?v=" .. BANNER_SESSION
 
-	local okHttp, httpBody = pcall(function()
-		return game:HttpGet(url)
-	end)
+	local result = httpRequest({
+		Url = url,
+		Method = "GET",
+	})
 
-	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
-		body = httpBody
-	else
-		-- Fallback for executors where game:HttpGet is restricted.
-		local result = httpRequest({
-			Url = url,
-			Method = "GET",
-		})
-		if result and tonumber(result.StatusCode) == 200 and result.Body then
-			body = result.Body
-		end
-	end
-
-	if not body then
+	if not result or tonumber(result.StatusCode) ~= 200 or not result.Body then
 		warn("[DayBreak] Failed to download banner:", safeName)
 		return nil
 	end
 
-	-- GitHub 404/HTML responses can otherwise be saved as if they were PNGs.
-	local pngSignature = "\137PNG\r\n\26\n"
-	if body:sub(1, 8) ~= pngSignature then
-		warn("[DayBreak] Banner response is not a valid PNG:", safeName, "bytes:", #body)
-		return nil
-	end
-
 	local ok = pcall(function()
-		writefile(localPath, body)
+		writefile(localPath, result.Body)
 	end)
 
 	if not ok then
@@ -292,6 +253,7 @@ local function downloadBanner(filename)
 		return nil
 	end
 
+	AssetCache[localPath] = nil
 	return loadLocalAsset(localPath)
 end
 
@@ -308,13 +270,6 @@ end
 local function getRole(player)
 	local config = getTagConfig(player)
 	return config.Role or SETTINGS.Roles[player.Name] or SETTINGS.DefaultRole
-end
-
--- Custom name shown on the nametag.
--- If DisplayName is not set, the player's normal Roblox display name is used.
-local function getNametagName(player)
-	local config = getTagConfig(player)
-	return config.DisplayName or player.DisplayName
 end
 
 --==================================================
@@ -453,10 +408,8 @@ local function createNametag(player, character)
 			backgroundImage.BackgroundTransparency = 1
 			backgroundImage.Image = asset
 			backgroundImage.ImageTransparency = tagConfig.BackgroundTransparency or 0
-			backgroundImage.ScaleType = Enum.ScaleType.Stretch
-			backgroundImage.ImageColor3 = Color3.new(1, 1, 1)
-			backgroundImage.Visible = true
-			backgroundImage.ZIndex = 1
+			backgroundImage.ScaleType = Enum.ScaleType.Crop
+			backgroundImage.ZIndex = 0
 			backgroundImage.Parent = panel
 
 			local backgroundCorner = Instance.new("UICorner")
@@ -483,7 +436,7 @@ local function createNametag(player, character)
 	starCircle.Position = UDim2.new(0, 8, 0.5, -29)
 	starCircle.BackgroundColor3 = SETTINGS.DarkInner
 	starCircle.BorderSizePixel = 0
-	starCircle.ZIndex = 3
+	starCircle.ZIndex = 1
 	starCircle.Parent = panel
 
 	local circleCorner = Instance.new("UICorner")
@@ -538,7 +491,7 @@ local function createNametag(player, character)
 	nameLabel.BackgroundTransparency = 1
 
 	-- Player's Roblox display name
-	nameLabel.Text = getNametagName(player)
+	nameLabel.Text = player.DisplayName
 
 	nameLabel.TextColor3 = SETTINGS.White
 	nameLabel.TextSize = 19
@@ -550,7 +503,7 @@ local function createNametag(player, character)
 	nameLabel.TextStrokeColor3 = SETTINGS.Orange
 	nameLabel.TextStrokeTransparency = 0.15
 
-	nameLabel.ZIndex = 4
+	nameLabel.ZIndex = 2
 	nameLabel.Parent = panel
 
 	--==================================================
@@ -574,7 +527,7 @@ local function createNametag(player, character)
 	subtitle.TextStrokeColor3 = SETTINGS.Dark
 	subtitle.TextStrokeTransparency = 0.4
 
-	subtitle.ZIndex = 4
+	subtitle.ZIndex = 2
 	subtitle.Parent = panel
 
 	--==================================================
