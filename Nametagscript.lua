@@ -40,7 +40,7 @@ local SETTINGS = {
 			DisplayName = "DayBreak",
 			Banner = "Daybreak.png",
 
-			Logo = "DaybreakLogo.png",
+			Logo = "Catlogo.png",
 
 			Overlay = {
 				Enabled = true,
