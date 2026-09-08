@@ -653,18 +653,28 @@ local function createNametag(player, character)
 	star.Parent = starCircle
 
 	local customLogo = Instance.new("ImageLabel")
-	customLogo.Name = "CircularCustomLogo"
-	customLogo.BackgroundTransparency = 1
-	customLogo.BorderSizePixel = 0
-	customLogo.Size = UDim2.fromScale(1, 1)
-	customLogo.Position = UDim2.fromScale(0, 0)
-	customLogo.Image = customLogoAsset or ""
-	customLogo.ScaleType = Enum.ScaleType.Fit
-	customLogo.ImageColor3 = SETTINGS.White
-	customLogo.ZIndex = 3
-	customLogo.Visible = customLogoAsset ~= nil
-	customLogo.ClipsDescendants = true
-	customLogo.Parent = starCircle
+customLogo.Name = "customLogo"
+customLogo.BackgroundTransparency = 1
+customLogo.BorderSizePixel = 0
+customLogo.Size = UDim2.new(1, -8, 1, -8)
+customLogo.Position = UDim2.new(0, 4, 0, 4)
+customLogo.AnchorPoint = Vector2.new(0, 0)
+customLogo.Image = customLogoAsset
+customLogo.ScaleType = Enum.ScaleType.Fit
+customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+customLogo.ZIndex = 3
+customLogo.Visible = customLogoAsset ~= ""
+customLogo.ClipsDescendants = true
+
+local customLogoCorner = Instance.new("UICorner")
+customLogoCorner.CornerRadius = UDim.new(1, 0)
+customLogoCorner.Parent = customLogo
+
+local customLogoAspect = Instance.new("UIAspectRatioConstraint")
+customLogoAspect.AspectRatio = 1
+customLogoAspect.Parent = customLogo
+
+customLogo.Parent = starCircle
 
 	local customLogoCorner = Instance.new("UICorner")
 	customLogoCorner.CornerRadius = UDim.new(1, 0)
@@ -811,18 +821,28 @@ local function createNametag(player, character)
 	logoStar.Parent = logoCircle
 
 	local customLogoDistant = Instance.new("ImageLabel")
-	customLogoDistant.Name = "CircularCustomLogoDistant"
-	customLogoDistant.BackgroundTransparency = 1
-	customLogoDistant.BorderSizePixel = 0
-	customLogoDistant.Size = UDim2.fromScale(1, 1)
-	customLogoDistant.Position = UDim2.fromScale(0, 0)
-	customLogoDistant.Image = customLogoAsset or ""
-	customLogoDistant.ScaleType = Enum.ScaleType.Fit
-	customLogoDistant.ImageColor3 = SETTINGS.White
-	customLogoDistant.ZIndex = 2
-	customLogoDistant.Visible = customLogoAsset ~= nil
-	customLogoDistant.ClipsDescendants = true
-	customLogoDistant.Parent = logoCircle
+customLogoDistant.Name = "customLogoDistant"
+customLogoDistant.BackgroundTransparency = 1
+customLogoDistant.BorderSizePixel = 0
+customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
+customLogoDistant.Position = UDim2.new(0, 4, 0, 4)
+customLogoDistant.AnchorPoint = Vector2.new(0, 0)
+customLogoDistant.Image = customLogoAsset
+customLogoDistant.ScaleType = Enum.ScaleType.Fit
+customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
+customLogoDistant.ZIndex = 3
+customLogoDistant.Visible = customLogoAsset ~= ""
+customLogoDistant.ClipsDescendants = true
+
+local customLogoDistantCorner = Instance.new("UICorner")
+customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
+customLogoDistantCorner.Parent = customLogoDistant
+
+local customLogoDistantAspect = Instance.new("UIAspectRatioConstraint")
+customLogoDistantAspect.AspectRatio = 1
+customLogoDistantAspect.Parent = customLogoDistant
+
+customLogoDistant.Parent = logoCircle
 
 	local customLogoDistantCorner = Instance.new("UICorner")
 	customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
@@ -998,6 +1018,8 @@ local function createNametag(player, character)
 
 			logoStar.Rotation = rotation
 			logoGlow.Rotation = rotation
+		customLogo.Rotation = rotation
+		customLogoDistant.Rotation = rotation
 			customLogoDistant.Rotation = 0
 
 		end
