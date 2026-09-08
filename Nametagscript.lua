@@ -137,8 +137,10 @@ local SETTINGS = {
 
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
-	RainbowBannerSpeed = 90, -- degrees per second
-	RainbowBannerThickness = 3,
+	RainbowBannerSpeed = 140, -- degrees per second
+	RainbowBannerThickness = 7,
+	RainbowBannerGlowThickness = 14,
+	RainbowBannerOuterGlowThickness = 22,
 
 	-- Floating
 	FloatingEnabled = true,
@@ -609,31 +611,69 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
-	-- ROTATING RAINBOW BANNER BORDER
+	-- BRIGHT, LARGE ROTATING RAINBOW BANNER BORDER
 	--==================================================
 
+	local rainbowColors = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.12, Color3.fromRGB(255, 80, 0)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.38, Color3.fromRGB(0, 255, 60)),
+		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.63, Color3.fromRGB(0, 100, 255)),
+		ColorSequenceKeypoint.new(0.76, Color3.fromRGB(130, 0, 255)),
+		ColorSequenceKeypoint.new(0.88, Color3.fromRGB(255, 0, 220)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
+	})
+
+	-- Main rainbow edge: thick and extremely bright.
 	local rainbowBorderStroke = Instance.new("UIStroke")
 	rainbowBorderStroke.Name = "RainbowBannerBorder"
 	rainbowBorderStroke.Thickness = SETTINGS.RainbowBannerThickness
 	rainbowBorderStroke.Transparency = 0
 	rainbowBorderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rainbowBorderStroke.LineJoinMode = Enum.LineJoinMode.Round
-	rainbowBorderStroke.Parent = panel
+	rainbowBorderStroke.Parent = orangeFrame
 
 	local rainbowBorderGradient = Instance.new("UIGradient")
 	rainbowBorderGradient.Name = "RainbowRotation"
-	rainbowBorderGradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
-		ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 0)),
-		ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 170, 255)),
-		ColorSequenceKeypoint.new(0.83, Color3.fromRGB(90, 0, 255)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 170)),
-	})
+	rainbowBorderGradient.Color = rainbowColors
 	rainbowBorderGradient.Rotation = 0
 	rainbowBorderGradient.Parent = rainbowBorderStroke
+
+	-- First glow layer.
+	local rainbowGlowStroke = Instance.new("UIStroke")
+	rainbowGlowStroke.Name = "RainbowBannerGlow"
+	rainbowGlowStroke.Thickness = SETTINGS.RainbowBannerGlowThickness
+	rainbowGlowStroke.Transparency = 0.45
+	rainbowGlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowGlowStroke.LineJoinMode = Enum.LineJoinMode.Round
+	rainbowGlowStroke.Parent = orangeFrame
+
+	local rainbowGlowGradient = Instance.new("UIGradient")
+	rainbowGlowGradient.Name = "RainbowGlowRotation"
+	rainbowGlowGradient.Color = rainbowColors
+	rainbowGlowGradient.Rotation = 0
+	rainbowGlowGradient.Parent = rainbowGlowStroke
+
+	-- Large outer glow layer.
+	local rainbowOuterGlowStroke = Instance.new("UIStroke")
+	rainbowOuterGlowStroke.Name = "RainbowBannerOuterGlow"
+	rainbowOuterGlowStroke.Thickness = SETTINGS.RainbowBannerOuterGlowThickness
+	rainbowOuterGlowStroke.Transparency = 0.72
+	rainbowOuterGlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowOuterGlowStroke.LineJoinMode = Enum.LineJoinMode.Round
+	rainbowOuterGlowStroke.Parent = orangeFrame
+
+	local rainbowOuterGlowGradient = Instance.new("UIGradient")
+	rainbowOuterGlowGradient.Name = "RainbowOuterGlowRotation"
+	rainbowOuterGlowGradient.Color = rainbowColors
+	rainbowOuterGlowGradient.Rotation = 0
+	rainbowOuterGlowGradient.Parent = rainbowOuterGlowStroke
+
 	rainbowBorderStroke.Enabled = SETTINGS.RainbowBannerEnabled
+	rainbowGlowStroke.Enabled = SETTINGS.RainbowBannerEnabled
+	rainbowOuterGlowStroke.Enabled = SETTINGS.RainbowBannerEnabled
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1056,11 +1096,20 @@ customLogoDistant.Parent = logoCircle
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled then
-			rainbowBorderStroke.Enabled = true
-			rainbowBorderGradient.Rotation =
+			local rainbowRotation =
 				(time * SETTINGS.RainbowBannerSpeed) % 360
+
+			rainbowBorderStroke.Enabled = true
+			rainbowGlowStroke.Enabled = true
+			rainbowOuterGlowStroke.Enabled = true
+
+			rainbowBorderGradient.Rotation = rainbowRotation
+			rainbowGlowGradient.Rotation = rainbowRotation
+			rainbowOuterGlowGradient.Rotation = rainbowRotation
 		else
 			rainbowBorderStroke.Enabled = false
+			rainbowGlowStroke.Enabled = false
+			rainbowOuterGlowStroke.Enabled = false
 		end
 
 		--==================================================
