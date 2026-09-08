@@ -43,7 +43,8 @@ local SETTINGS = {
 			Logo = "Catlogo.png",
 
 			Overlay = {
-				Enabled = true,
+				-- Banner overlays disabled in the clean build.
+				Enabled = false,
 				Type = "Prism",
 				Speed = 1.2,
 				Glow = true,
@@ -992,12 +993,17 @@ local function createNametag(player, character)
 	--==================================================
 
 	local overlayConfig = tagConfig.Overlay or {
-		Enabled = true,
+		Enabled = false,
 		Type = "Prism",
 		Speed = 1.2,
 		Opacity = 0.55,
 		Glow = true,
 	}
+
+	-- CLEAN BUILD: banner overlays are completely disabled.
+	-- This prevents Prism/ChromeSweep/sweep-strip artifacts from being created
+	-- or shown, while leaving the banner, logo, border, and text intact.
+	overlayConfig.Enabled = false
 
 	local overlayFolder = Instance.new("Frame")
 	overlayFolder.Name = "BannerOverlay"
@@ -1007,6 +1013,7 @@ local function createNametag(player, character)
 	overlayFolder.BorderSizePixel = 0
 	overlayFolder.ClipsDescendants = true
 	overlayFolder.ZIndex = 4
+	overlayFolder.Visible = false
 	overlayFolder.Parent = panel
 
 	local overlayCorner = Instance.new("UICorner")
@@ -1226,9 +1233,10 @@ local function createNametag(player, character)
 		end
 	end
 
-	if not overlayConfig.Enabled then
-		overlayFolder.Visible = false
-	end
+	-- CLEAN BUILD: remove the overlay container entirely.
+	-- This is stronger than simply hiding it and guarantees that no overlay
+	-- Frame, gradient, sweep, strip, or legacy visual can render.
+	overlayFolder:Destroy()
 
 	local overlayTime = 0
 
@@ -1983,7 +1991,8 @@ local function createNametag(player, character)
 		--==================================================
 
 		if overlayFolder and overlayFolder.Parent then
-			if overlayConfig.Enabled then
+			-- CLEAN BUILD: never re-enable the banner overlay.
+			if false and overlayConfig.Enabled then
 				overlayFolder.Visible = true
 				-- Use the already computed frame time instead of yielding.
 				local ot = time * overlaySpeed
