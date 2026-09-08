@@ -2,6 +2,11 @@
 -- DAYBREAK MULTIPLAYER NAMETAG
 --==================================================
 
+-- Single-instance guard: every execution invalidates the previous instance.
+-- This prevents repeated executor runs from stacking controllers and GUI updates.
+_G.__DayBreakNametagGeneration = (_G.__DayBreakNametagGeneration or 0) + 1
+local __DAYBREAK_GENERATION = _G.__DayBreakNametagGeneration
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
@@ -134,7 +139,7 @@ local SETTINGS = {
 	ClickableFriendTagsEnabled = true,
 	-- LOGO EFFECT SYSTEM
 	-- All 26 effects are available. Enable only the ones you want.
-	LogoEffectsEnabled = true,
+	LogoEffectsEnabled = false,
 	LogoEffectsSpeed = 1,
 	LogoEffects = {
 		"Pulse",
@@ -173,7 +178,7 @@ local SETTINGS = {
 
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
-	RainbowBannerSpeed = 70, -- smooth continuous movement
+	RainbowBannerSpeed = 18, -- smooth continuous movement
 	RainbowBannerThickness = 3,
 	RainbowBannerGlowThickness = 6,
 	RainbowBannerOuterGlowThickness = 10,
@@ -1474,6 +1479,11 @@ local function createNametag(player, character)
 
 	connection = RunService.RenderStepped:Connect(function()
 
+		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
+			if connection then connection:Disconnect() end
+			return
+		end
+
 		if not character or not character.Parent or not head or not head.Parent then
 			if connection then connection:Disconnect() end
 			return
@@ -1978,10 +1988,22 @@ local function syncNametags()
 		local character = player.Character
 
 		if character then
-			if shouldShowNametag(player) then
+			-- The local player's tag is permanent for this script run.
+			-- Registry polling must never remove or rebuild it every few seconds.
+			if player == localPlayer then
 				if not character:FindFirstChild("CustomDayBreakNametag") then
 					task.spawn(function()
-						createNametag(player, character)
+						if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
+							createNametag(player, character)
+						end
+					end)
+				end
+			elseif shouldShowNametag(player) then
+				if not character:FindFirstChild("CustomDayBreakNametag") then
+					task.spawn(function()
+						if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
+							createNametag(player, character)
+						end
 					end)
 				end
 			else
@@ -2000,7 +2022,7 @@ task.spawn(function()
 		return
 	end
 
-	while true do
+	while __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration do
 		heartbeat()
 		refreshActivePlayers()
 		syncNametags()
