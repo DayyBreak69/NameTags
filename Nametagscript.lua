@@ -49,7 +49,7 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-		DisplayName = "DayBreak",
+		DisplayName = "Nigger",
 			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
