@@ -125,6 +125,8 @@ local SETTINGS = {
 	-- Star
 	StarEnabled = true,
 	StarRotateSpeed = 20,
+	LogoRotateEnabled = true,
+	LogoRotateSpeed = 20,
 
 	-- Floating
 	FloatingEnabled = true,
@@ -663,7 +665,7 @@ customLogo.Image = customLogoAsset
 customLogo.ScaleType = Enum.ScaleType.Fit
 customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
 customLogo.ZIndex = 3
-customLogo.Visible = customLogoAsset ~= ""
+customLogo.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
 customLogo.ClipsDescendants = true
 
 local customLogoCorner = Instance.new("UICorner")
@@ -675,10 +677,6 @@ customLogoAspect.AspectRatio = 1
 customLogoAspect.Parent = customLogo
 
 customLogo.Parent = starCircle
-
-	local customLogoCorner = Instance.new("UICorner")
-	customLogoCorner.CornerRadius = UDim.new(1, 0)
-	customLogoCorner.Parent = customLogo
 
 
 	--==================================================
@@ -831,7 +829,7 @@ customLogoDistant.Image = customLogoAsset
 customLogoDistant.ScaleType = Enum.ScaleType.Fit
 customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
 customLogoDistant.ZIndex = 3
-customLogoDistant.Visible = customLogoAsset ~= ""
+customLogoDistant.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
 customLogoDistant.ClipsDescendants = true
 
 local customLogoDistantCorner = Instance.new("UICorner")
@@ -843,10 +841,6 @@ customLogoDistantAspect.AspectRatio = 1
 customLogoDistantAspect.Parent = customLogoDistant
 
 customLogoDistant.Parent = logoCircle
-
-	local customLogoDistantCorner = Instance.new("UICorner")
-	customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
-	customLogoDistantCorner.Parent = customLogoDistant
 
 
 	--==================================================
@@ -1014,14 +1008,22 @@ customLogoDistant.Parent = logoCircle
 
 			star.Rotation = rotation
 			starGlow.Rotation = rotation
-			customLogo.Rotation = 0
+			customLogo.Rotation = rotation
 
 			logoStar.Rotation = rotation
 			logoGlow.Rotation = rotation
-		customLogo.Rotation = rotation
-		customLogoDistant.Rotation = rotation
-			customLogoDistant.Rotation = 0
+			customLogoDistant.Rotation = rotation
 
+		end
+
+		--==================================================
+		-- CATLOGO ROTATION
+		--==================================================
+
+		if SETTINGS.LogoRotateEnabled then
+			local logoRotation = (time * SETTINGS.LogoRotateSpeed) % 360
+			customLogo.Rotation = logoRotation
+			customLogoDistant.Rotation = logoRotation
 		end
 
 		--==================================================
