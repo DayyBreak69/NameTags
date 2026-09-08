@@ -27,6 +27,19 @@ local SETTINGS = {
 	-- Use Roblox UserIds when possible so tags stay tied to the correct person.
 	-- Banner is ONLY the filename, for example: "DayyBreak66.png"
 	PlayerTags = {
+
+		-- ==================================================
+		-- CUSTOM NAME SETTINGS
+		-- Change DisplayName to control what appears on the nametag.
+		-- ==================================================
+		-- Example:
+		-- ["FriendUsername"] = {
+		--	Role = "FRIEND",
+		--	DisplayName = "The Name I Want Shown",
+		--	Banner = "Friend.png",
+		--	BackgroundTransparency = 0.05,
+		-- },
+
 		-- Recommended: use UserId
 		-- [123456789] = {
 		--	Role = "FRIEND",
@@ -36,11 +49,13 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			Banner = "Daybreak.png",
+		DisplayName = "DayBreak",
+			Banner = "DayyBreak66.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
+		DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
@@ -266,6 +281,13 @@ local function getRole(player)
 	return config.Role or SETTINGS.Roles[player.Name] or SETTINGS.DefaultRole
 end
 
+-- Custom name shown on the nametag.
+-- If DisplayName is not set, the player's normal Roblox display name is used.
+local function getNametagName(player)
+	local config = getTagConfig(player)
+	return config.DisplayName or player.DisplayName
+end
+
 --==================================================
 -- REMOVE OLD TAG
 --==================================================
@@ -485,7 +507,7 @@ local function createNametag(player, character)
 	nameLabel.BackgroundTransparency = 1
 
 	-- Player's Roblox display name
-	nameLabel.Text = player.DisplayName
+	nameLabel.Text = getNametagName(player)
 
 	nameLabel.TextColor3 = SETTINGS.White
 	nameLabel.TextSize = 19
