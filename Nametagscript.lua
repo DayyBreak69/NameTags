@@ -42,16 +42,6 @@ local SETTINGS = {
 
 			Logo = "Catlogo.png",
 
-			Overlay = {
-				-- Banner overlay system. Change Type to test an overlay.
-				Enabled = true,
-				Type = "Starlight",
-				Speed = 0.35,
-				Glow = true,
-				GlowStrength = 2,
-				Rotation = 0,
-				Pulse = true,
-			},
 
 			BackgroundTransparency = 0.05,
 		},
@@ -182,7 +172,7 @@ local SETTINGS = {
 
 
 	-- RAINBOW BANNER BORDER
-	RainbowBannerEnabled = false,
+	RainbowBannerEnabled = true,
 	RainbowBannerSpeed = 70, -- smooth continuous movement
 	RainbowBannerThickness = 3,
 	RainbowBannerGlowThickness = 6,
@@ -542,19 +532,6 @@ local function removeNametag(character)
 		return
 	end
 
-	-- Remove the old procedural rainbow border from any tag created by
-	-- previous versions. The border was responsible for the rainbow
-	-- pillars around the banner.
-	for _, obj in ipairs(character:GetDescendants()) do
-		if obj.Name == "RainbowBannerBorder"
-			or obj.Name:match("^RainbowSegment%d+$")
-			or obj.Name == "SoftGlow" then
-			if obj:IsA("Frame") then
-				obj:Destroy()
-			end
-		end
-	end
-
 	-- Clean up tags left behind by previous versions of this script.
 	-- Earlier builds used several different BillboardGui names, so removing
 	-- only "CustomDayBreakNametag" could leave an old overlay/sweep alive.
@@ -570,7 +547,9 @@ local function removeNametag(character)
 	-- This catches legacy tags/overlays that were parented under Head or
 	-- another attachment and could otherwise survive the cleanup.
 	for _, child in ipairs(character:GetDescendants()) do
-		if child:IsA("BillboardGui") then
+		if child:IsA("Frame") and child.Name == "BannerOverlay" then
+			child:Destroy()
+		elseif child:IsA("BillboardGui") then
 			local name = tostring(child.Name)
 			if staleNames[name]
 				or name:find("DayBreak", 1, true)
@@ -633,9 +612,6 @@ local function createNametag(player, character)
 	billboard.MaxDistance = SETTINGS.MaxDistance
 	billboard.ResetOnSpawn = false
 	billboard.Parent = character
-	-- Explicit root bounds prevent Scale-based descendants from collapsing.
-	billboard.Size = UDim2.fromOffset(SETTINGS.Width, SETTINGS.Height)
-	billboard.Enabled = true
 
 	--==================================================
 	-- OUTER CHROME
@@ -671,9 +647,6 @@ local function createNametag(player, character)
 	--==================================================
 
 	local panel = Instance.new("Frame")
-	panel.Size = UDim2.fromScale(1, 1)
-	panel.Position = UDim2.fromScale(0, 0)
-	panel.AnchorPoint = Vector2.new(0, 0)
 	panel.Size = UDim2.new(1, -6, 1, -6)
 	panel.Position = UDim2.fromOffset(3, 3)
 	panel.BackgroundColor3 = SETTINGS.Dark
@@ -742,27 +715,124 @@ local function createNametag(player, character)
 	-- do not render gradient strokes correctly.
 	--==================================================
 
-	--==================================================
-	-- EXTERNAL RAINBOW BORDER
-	-- DISABLED: this old procedural segment system created the
-	-- unwanted rainbow pillars around the banner.
-	--==================================================
-
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
 	rainbowContainer.Position = UDim2.fromScale(0, 0)
-	rainbowContainer.Visible = false
+	rainbowContainer.ClipsDescendants = false
+	rainbowContainer.ZIndex = 50
 	rainbowContainer.Parent = billboard
 
 	local rainbowSegments = {}
+	local RAINBOW_SEGMENT_COUNT = 61
+	local RAINBOW_THICKNESS = SETTINGS.RainbowBannerThickness
+	local RAINBOW_RADIUS = 20
 
-	local function buildRainbowBorder()
-		-- Intentionally disabled.
+	for i = 1, RAINBOW_SEGMENT_COUNT do
+		local segment = Instance.new("Frame")
+		segment.Name = "RainbowSegment" .. i
+		segment.BackgroundColor3 = Color3.fromHSV((i - 1) / RAINBOW_SEGMENT_COUNT, 1, 1)
+		segment.BorderSizePixel = 0
+		segment.AnchorPoint = Vector2.new(0.5, 0.5)
+		segment.ZIndex = 50
+		segment.Parent = rainbowContainer
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(1, 0)
+		corner.Parent = segment
+
+		local glow = Instance.new("UIStroke")
+		glow.Name = "SoftGlow"
+		glow.Thickness = 2
+		glow.Transparency = 0.70
+		glow.Color = segment.BackgroundColor3
+		glow.ZIndex = 49
+		glow.Parent = segment
+
+		table.insert(rainbowSegments, {frame = segment, glow = glow})
 	end
 
+	local rainbowLastWidth = 0
+	local rainbowLastHeight = 0
+
+	local function buildRainbowBorder()
+		local size = rainbowContainer.AbsoluteSize
+		local w, h = size.X, size.Y
+		if w <= 1 or h <= 1 then
+			return
+		end
+
+		if math.abs(w - rainbowLastWidth) < 0.5 and math.abs(h - rainbowLastHeight) < 0.5 then
+			return
+		end
+		rainbowLastWidth = w
+		rainbowLastHeight = h
+
+		local radius = math.min(RAINBOW_RADIUS, (h * 0.5) - 1, (w * 0.5) - 1)
+		local points = {}
+
+		local function addPoint(x, y)
+			table.insert(points, Vector2.new(x, y))
+		end
+
+		-- Top edge
+		for i = 0, 7 do
+			local t = i / 7
+			addPoint(radius + (w - 2 * radius) * t, 0)
+		end
+		-- Top-right corner
+		for i = 1, 8 do
+			local a = -math.pi / 2 + (math.pi / 2) * (i / 8)
+			addPoint(w - radius + math.cos(a) * radius, radius + math.sin(a) * radius)
+		end
+		-- Right edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(w, radius + (h - 2 * radius) * t)
+		end
+		-- Bottom-right corner
+		for i = 1, 8 do
+			local a = 0 + (math.pi / 2) * (i / 8)
+			addPoint(w - radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
+		end
+		-- Bottom edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(w - radius - (w - 2 * radius) * t, h)
+		end
+		-- Bottom-left corner
+		for i = 1, 8 do
+			local a = math.pi / 2 + (math.pi / 2) * (i / 8)
+			addPoint(radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
+		end
+		-- Left edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(0, h - radius - (h - 2 * radius) * t)
+		end
+		-- Top-left corner
+		for i = 1, 8 do
+			local a = math.pi + (math.pi / 2) * (i / 8)
+			addPoint(radius + math.cos(a) * radius, radius + math.sin(a) * radius)
+		end
+
+		for i, data in ipairs(rainbowSegments) do
+			local p1 = points[i]
+			local p2 = points[(i % #points) + 1]
+			if p1 and p2 then
+				local delta = p2 - p1
+				local length = delta.Magnitude + 2
+				local midpoint = (p1 + p2) * 0.5
+				data.frame.Position = UDim2.fromOffset(midpoint.X, midpoint.Y)
+				data.frame.Size = UDim2.fromOffset(length, RAINBOW_THICKNESS)
+				data.frame.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+			end
+		end
+	end
+
+	buildRainbowBorder()
 
 	--==================================================
 	-- STAR CIRCLE
@@ -910,290 +980,11 @@ local function createNametag(player, character)
 
 
 	--==================================================
-	-- BANNER OVERLAY SYSTEM (REBUILT)
+	-- BANNER OVERLAYS REMOVED
 	--==================================================
-	-- The previous overlay implementation mixed several rendering methods
-	-- (rotated gradients, sweep frames, and shared strip logic). That made
-	-- different overlay types interfere with each other and made it hard to
-	-- tell whether an effect was actually being created.
-	--
-	-- This version gives every overlay its own objects and keeps the overlay
-	-- strictly inside the banner area. ChromeSweep is intentionally excluded.
+	-- No moving banner overlay is created. The banner uses only the
+	-- procedural rainbow border below.
 
-	local overlayConfig = tagConfig.Overlay or {
-		Enabled = true,
-		Type = "Prism",
-		Speed = 0.35,
-		Opacity = 0.55,
-		Glow = true,
-	}
-
-	local overlayType = tostring(overlayConfig.Type or "Prism")
-	local overlaySpeed = tonumber(overlayConfig.Speed) or 1.2
-	local overlayOpacity = math.clamp(tonumber(overlayConfig.Opacity) or 0.55, 0, 1)
-
-	local overlayFolder = Instance.new("Frame")
-	overlayFolder.Name = "BannerOverlay"
-	overlayFolder.Size = UDim2.new(1, -66, 1, 0)
-	overlayFolder.Position = UDim2.fromOffset(64, 0)
-	overlayFolder.BackgroundTransparency = 1
-	overlayFolder.BorderSizePixel = 0
-	overlayFolder.ClipsDescendants = true
-	overlayFolder.ZIndex = 2
-	overlayFolder.Visible = overlayConfig.Enabled ~= false
-	overlayFolder.Parent = panel
-
-	local overlayCorner = Instance.new("UICorner")
-	overlayCorner.CornerRadius = UDim.new(0, 16)
-	overlayCorner.Parent = overlayFolder
-
-	local overlayObjects = {}
-	local movingObjects = {}
-	local twinkleObjects = {}
-
-	local function addOverlay(name)
-		local obj = Instance.new("Frame")
-		obj.Name = name
-		obj.BackgroundTransparency = 1
-		obj.BorderSizePixel = 0
-		obj.ZIndex = 2
-		obj.Parent = overlayFolder
-		table.insert(overlayObjects, obj)
-		return obj
-	end
-
-	local function addGradient(obj, sequence, rotation)
-		local g = Instance.new("UIGradient")
-		g.Color = sequence
-		g.Rotation = rotation or 0
-		g.Parent = obj
-		return g
-	end
-
-	local rainbowSequence = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,0,0)),
-		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255,120,0)),
-		ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255,255,0)),
-		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0,255,80)),
-		ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0,255,255)),
-		ColorSequenceKeypoint.new(0.80, Color3.fromRGB(70,100,255)),
-		ColorSequenceKeypoint.new(0.92, Color3.fromRGB(180,0,255)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,0,180)),
-	})
-
-	local function addWash(name, sequence, transparency)
-		local f = addOverlay(name)
-		f.Size = UDim2.fromScale(1, 1)
-		f.Position = UDim2.fromScale(0, 0)
-		f.BackgroundColor3 = Color3.new(1,1,1)
-		f.BackgroundTransparency = math.clamp(transparency + 0.05, 0, 1)
-		addGradient(f, sequence, 0)
-		return f
-	end
-
-	local function addSweep(name, width, sequence, transparency)
-		local f = addOverlay(name)
-		f.Size = UDim2.new(0, width, 1, 0)
-		f.Position = UDim2.new(-0.25, 0, 0, 0)
-		f.BackgroundColor3 = Color3.new(1,1,1)
-		f.BackgroundTransparency = transparency
-		addGradient(f, sequence, 0)
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(1,0)
-		c.Parent = f
-		table.insert(movingObjects, f)
-		return f
-	end
-
-	if overlayConfig.Enabled ~= false then
-		if overlayType == "ChromeSweep" then
-			-- Permanently disabled. This is the original artifact.
-			overlayFolder.Visible = false
-
-		elseif overlayType == "Starlight" then
-			for i = 1, 24 do
-				local f = addOverlay("Star" .. i)
-				local size = (i % 4 == 0) and 6 or ((i % 2 == 0) and 5 or 4)
-				f.Size = UDim2.fromOffset(size, size)
-				f.Position = UDim2.fromScale(
-					((i * 0.173) % 0.92) + 0.04,
-					((i * 0.317) % 0.82) + 0.05
-				)
-				f.BackgroundColor3 = (i % 4 == 0)
-					and Color3.fromRGB(140,220,255)
-					or Color3.new(1,1,1)
-				f.BackgroundTransparency = 0.05
-				local glow = Instance.new("UIStroke")
-				glow.Thickness = 1
-				glow.Transparency = 0.35
-				glow.Color = f.BackgroundColor3
-				glow.Parent = f
-				local c = Instance.new("UICorner")
-				c.CornerRadius = UDim.new(1,0)
-				c.Parent = f
-				table.insert(twinkleObjects, f)
-			end
-
-		elseif overlayType == "Starlight" then
-			for i = 1, 5 do
-				local f = addOverlay("Prism" .. i)
-				f.Size = UDim2.new(0, 7, 1, 0)
-				f.Position = UDim2.new(-0.4 - i * 0.28, 0, 0, 0)
-				local prismColors = {
-					Color3.fromRGB(255,70,120),
-					Color3.fromRGB(255,170,60),
-					Color3.fromRGB(80,255,190),
-					Color3.fromRGB(80,170,255),
-					Color3.fromRGB(210,80,255),
-				}
-				f.BackgroundColor3 = prismColors[i]
-				f.BackgroundTransparency = 0.35
-				local g = Instance.new("UIGradient")
-				g.Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, prismColors[i]),
-					ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-					ColorSequenceKeypoint.new(1, prismColors[i]),
-				})
-				g.Transparency = NumberSequence.new({
-					NumberSequenceKeypoint.new(0, 0.85),
-					NumberSequenceKeypoint.new(0.5, 0.10),
-					NumberSequenceKeypoint.new(1, 0.85),
-				})
-				g.Parent = f
-				table.insert(movingObjects, f)
-			end
-
-		elseif overlayType == "SpeedLines" then
-			for i = 1, 8 do
-				local f = addOverlay("SpeedLine" .. i)
-				f.Size = UDim2.new(0, 3, 1, 0)
-				f.Position = UDim2.new(-0.5 - i * 0.20, 0, 0, 0)
-				f.BackgroundColor3 = Color3.new(1,1,1)
-				f.BackgroundTransparency = 0.88
-				table.insert(movingObjects, f)
-			end
-
-		elseif overlayType == "Holographic" then
-			addWash("Holographic", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,70,220)),
-				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(70,190,255)),
-				ColorSequenceKeypoint.new(0.66, Color3.fromRGB(180,70,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,70,220)),
-			}), 1 - math.min(overlayOpacity, 0.45))
-
-		elseif overlayType == "Iridescent" then
-			addWash("Iridescent", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,190,230)),
-				ColorSequenceKeypoint.new(0.35, Color3.fromRGB(180,230,255)),
-				ColorSequenceKeypoint.new(0.7, Color3.fromRGB(225,190,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190)),
-			}), 0.70)
-
-		elseif overlayType == "RainbowFlow" or overlayType == "RainbowPulse" or overlayType == "NeonRainbow" then
-			local f = addWash("Rainbow", rainbowSequence, overlayType == "NeonRainbow" and 0.52 or 0.68)
-			f:SetAttribute("RainbowFlow", true)
-
-		elseif overlayType == "Aurora" then
-			addWash("Aurora", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(20,255,150)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40,150,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255)),
-			}), 0.62)
-
-		elseif overlayType == "MetallicFlow" then
-			addWash("Metallic", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(70,70,80)),
-				ColorSequenceKeypoint.new(0.30, Color3.fromRGB(255,255,255)),
-				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(140,140,150)),
-				ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255,255,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60,60,70)),
-			}), 0.62)
-
-		elseif overlayType == "GlassSweep" then
-			addSweep("GlassSweep", 26, ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(120,190,255)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245,250,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(120,190,255)),
-			}), 0.72)
-
-		elseif overlayType == "DiamondShine" then
-			addSweep("DiamondShine", 18, ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
-			}), 0.82)
-
-		elseif overlayType == "Gloss" then
-			addSweep("Gloss", 22, ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
-			}), 0.88)
-
-		elseif overlayType == "EnergyPulse" then
-			addSweep("EnergyPulse", 30, ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(70,130,255)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,255,255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(70,130,255)),
-			}), 0.78)
-
-		elseif overlayType == "LaserSweep" then
-			addSweep("LaserSweep", 5, ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,50,50)),
-				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,50,50)),
-			}), 0.40)
-
-		elseif overlayType == "Scanline" then
-			local f = addOverlay("Scanline")
-			f.Size = UDim2.new(1,0,0,2)
-			f.Position = UDim2.fromScale(0,-0.1)
-			f.BackgroundColor3 = Color3.new(1,1,1)
-			f.BackgroundTransparency = 0.45
-			table.insert(movingObjects, f)
-
-		elseif overlayType == "Glitch" or overlayType == "Static" then
-			for i = 1, 7 do
-				local f = addOverlay("Glitch" .. i)
-				f.Size = UDim2.new(1,0,0,2 + (i % 2))
-				f.Position = UDim2.fromScale(0, (i - 1) / 7)
-				f.BackgroundColor3 = (i % 2 == 0) and Color3.fromRGB(255,80,150) or Color3.fromRGB(80,220,255)
-				f.BackgroundTransparency = overlayType == "Glitch" and 0.50 or 0.72
-				table.insert(movingObjects, f)
-			end
-
-		elseif overlayType == "ColorShift" or overlayType == "Sunset" or overlayType == "Ocean"
-			or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
-			or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
-			or overlayType == "Cyber" or overlayType == "Galaxy" or overlayType == "Cosmic"
-			or overlayType == "Void" then
-			local palettes = {
-				ColorShift = ColorSequence.new(Color3.fromRGB(255,70,100), Color3.fromRGB(70,150,255)),
-				Sunset = ColorSequence.new(Color3.fromRGB(255,100,30), Color3.fromRGB(140,40,190)),
-				Ocean = ColorSequence.new(Color3.fromRGB(0,70,160), Color3.fromRGB(0,220,255)),
-				Fire = ColorSequence.new(Color3.fromRGB(120,0,0), Color3.fromRGB(255,190,0)),
-				Ice = ColorSequence.new(Color3.fromRGB(40,130,255), Color3.fromRGB(220,255,255)),
-				Electric = ColorSequence.new(Color3.fromRGB(80,120,255), Color3.fromRGB(220,100,255)),
-				Lava = ColorSequence.new(Color3.fromRGB(70,0,0), Color3.fromRGB(255,60,0)),
-				Toxic = ColorSequence.new(Color3.fromRGB(20,80,0), Color3.fromRGB(180,255,0)),
-				ShadowFlame = ColorSequence.new(Color3.fromRGB(20,0,30), Color3.fromRGB(180,30,80)),
-				Cyber = ColorSequence.new(Color3.fromRGB(0,255,255), Color3.fromRGB(220,0,255)),
-				Galaxy = ColorSequence.new(Color3.fromRGB(20,0,70), Color3.fromRGB(80,20,180)),
-				Cosmic = ColorSequence.new(Color3.fromRGB(10,0,50), Color3.fromRGB(100,30,220)),
-				Void = ColorSequence.new(Color3.fromRGB(0,0,0), Color3.fromRGB(45,0,70)),
-			}
-			addWash("ColorWash", palettes[overlayType], 0.60)
-		else
-			-- Unknown type: create a visible but harmless fallback so the user
-			-- can immediately tell that the overlay system is alive.
-			local f = addOverlay("OverlayFallback")
-			f.Size = UDim2.fromScale(1,1)
-			f.BackgroundColor3 = Color3.fromRGB(255,80,180)
-			f.BackgroundTransparency = 0.82
-		end
-	end
-
-	local overlayTime = 0
 
 	--==================================================
 	-- PLAYER NAME
@@ -1681,7 +1472,7 @@ local function createNametag(player, character)
 
 	local connection
 
-	connection = RunService.RenderStepped:Connect(function(deltaTime)
+	connection = RunService.RenderStepped:Connect(function()
 
 		if not character or not character.Parent or not head or not head.Parent then
 			if connection then connection:Disconnect() end
@@ -1783,8 +1574,20 @@ local function createNametag(player, character)
 		-- Each segment gets a smoothly moving HSV hue.
 		--==================================================
 
-		-- External rainbow border intentionally disabled.
-		rainbowContainer.Visible = false
+		buildRainbowBorder()
+
+		if SETTINGS.RainbowBannerEnabled then
+			rainbowContainer.Visible = true
+			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
+			for i, data in ipairs(rainbowSegments) do
+				local hue = ((i - 1) / RAINBOW_SEGMENT_COUNT + hueOffset) % 1
+				local color = Color3.fromHSV(hue, 1, 1)
+				data.frame.BackgroundColor3 = color
+				data.glow.Color = color
+			end
+		else
+			rainbowContainer.Visible = false
+		end
 
 		--==================================================
 		-- GLOW
@@ -1928,64 +1731,6 @@ local function createNametag(player, character)
 
 		end
 
-
-		--==================================================
-		-- BANNER OVERLAY ANIMATION
-		--==================================================
-
-		if overlayFolder and overlayFolder.Parent then
-			if overlayConfig.Enabled ~= false and overlayType ~= "ChromeSweep" then
-				overlayFolder.Visible = true
-				overlayTime += math.min(deltaTime, 0.1) * overlaySpeed
-				local ot = overlayTime
-
-				for i, f in ipairs(movingObjects) do
-					if overlayType == "Starlight" then
-						local speed = 0.16 + i * 0.018
-						f.Position = UDim2.new(-0.45 + ((ot * speed) % 1.55), 0, 0, 0)
-					elseif overlayType == "SpeedLines" then
-						local speed = 0.28 + i * 0.035
-						f.Position = UDim2.new(-0.35 + ((ot * speed) % 1.45), 0, 0, 0)
-					elseif overlayType == "Scanline" then
-						f.Position = UDim2.fromScale(0, -0.08 + ((ot * 0.45) % 1.16))
-					elseif overlayType == "Glitch" or overlayType == "Static" then
-						f.Visible = math.random() > (overlayType == "Glitch" and 0.25 or 0.08)
-					else
-						local progress = -0.30 + ((ot * 0.30) % 1.55)
-						f.Position = UDim2.new(progress, 0, 0, 0)
-					end
-				end
-
-				for i, f in ipairs(twinkleObjects) do
-					f.BackgroundTransparency = 0.08 + math.abs(math.sin(ot * 2.2 + i * 1.7)) * 0.48
-				end
-
-				for _, obj in ipairs(overlayObjects) do
-					local g = obj:FindFirstChildOfClass("UIGradient")
-					if g then
-						if overlayType == "RainbowFlow" or overlayType == "RainbowPulse"
-							or overlayType == "NeonRainbow" or overlayType == "Holographic"
-							or overlayType == "Iridescent" or overlayType == "Aurora"
-							or overlayType == "MetallicFlow" or overlayType == "ColorShift"
-							or overlayType == "Sunset" or overlayType == "Ocean"
-							or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
-							or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
-							or overlayType == "Cyber" or overlayType == "Galaxy" or overlayType == "Cosmic"
-							or overlayType == "Void" then
-							g.Offset = Vector2.new(((ot * 0.12) % 1.2) - 0.1, 0)
-						else
-							g.Offset = Vector2.new(0, 0)
-						end
-					end
-				end
-
-				if overlayType == "RainbowPulse" then
-					overlayFolder.BackgroundTransparency = 0.90 - math.abs(math.sin(ot * 2)) * 0.08
-				end
-			else
-				overlayFolder.Visible = false
-			end
-		end
 
 		--==================================================
 		-- LOGO EFFECT ANIMATION
@@ -2234,21 +1979,7 @@ local function syncNametags()
 
 		if character then
 			if shouldShowNametag(player) then
-				local existingTag = character:FindFirstChild("CustomDayBreakNametag")
-				local needsRebuild = false
-
-				if existingTag then
-					if existingTag:GetAttribute("DayBreakNametagVersion") ~= "BannerOverlayV2" then
-						needsRebuild = true
-					elseif existingTag:FindFirstChild("RainbowBannerBorder", true) then
-						needsRebuild = true
-					end
-				end
-
-				if not existingTag or needsRebuild then
-					if existingTag then
-						existingTag:Destroy()
-					end
+				if not character:FindFirstChild("CustomDayBreakNametag") then
 					task.spawn(function()
 						createNametag(player, character)
 					end)
