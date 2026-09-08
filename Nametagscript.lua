@@ -13,6 +13,34 @@ local localPlayer = Players.LocalPlayer
 local SETTINGS = {
 		LogoEffectsEnabled = true,
 		LogoEffectsSpeed = 1,
+		LogoEffects = {
+			"Pulse",
+			"GlowPulse",
+			"Rotation",
+			"CounterRotation",
+			"ShineSweep",
+			"ChromeSweep",
+			"ColorCycling",
+			"BrightnessPulse",
+			"OutlineGlow",
+			"OuterRing",
+			"RingRotation",
+			"OrbitingParticles",
+			"SparkleFlashes",
+			"EnergyAura",
+			"Ripple",
+			"BreathingEffect",
+			"Floating",
+			"Tilt",
+			"Glitch",
+			"ChromaticSplit",
+			"Scanline",
+			"ParticleBurst",
+			"Trail",
+			"ElectricArcs",
+			"Halo",
+			"Shockwave",
+		},
 
 	-- Display
 	Font = Enum.Font.GothamBold,
@@ -1224,7 +1252,75 @@ local function createNametag(player, character)
 		overlayFolder.Visible = false
 	end
 
+	-- Overlay animation controller. This MUST live inside createNametag
+	-- because overlayFolder/overlayObjects belong to this nametag.
+	local overlayTime = math.random() * 100
+	local overlayConnections
+	overlayConnections = RunService.RenderStepped:Connect(function(dt)
+		if not overlayFolder or not overlayFolder.Parent then
+			overlayConnections:Disconnect()
+			return
+		end
+		if not overlayConfig.Enabled then return end
 
+		overlayTime += dt * speed
+		local t = overlayTime
+
+		for _, obj in ipairs(overlayObjects) do
+			if obj and obj.Parent then
+				local g = obj:FindFirstChildOfClass("UIGradient")
+				if g then
+					g.Rotation = (g.Rotation + dt * speed * 45) % 360
+				end
+			end
+		end
+
+		if typeName == "RainbowPulse" then
+			overlayFolder.BackgroundTransparency = 0.55 + math.sin(t * 2) * 0.18
+		elseif typeName == "EnergyPulse" then
+			local f = overlayFolder:FindFirstChild("Energy")
+			if f then f.Position = UDim2.fromScale(-0.4 + ((t * 0.55) % 1.4), 0) end
+		elseif typeName == "Scanline" then
+			local f = overlayFolder:FindFirstChild("Scanline")
+			if f then f.Position = UDim2.fromScale(-0.02 + ((t * 0.65) % 1.04), 0) end
+		elseif typeName == "LaserSweep" then
+			local f = overlayFolder:FindFirstChild("Laser")
+			if f then f.Position = UDim2.fromScale(-0.08 + ((t * 0.75) % 1.16), 0) end
+		elseif typeName == "ChromeSweep" or typeName == "GlassSweep" or typeName == "DiamondShine" or typeName == "Gloss" then
+			local name = typeName == "ChromeSweep" and "Chrome" or typeName == "GlassSweep" and "Glass" or typeName == "DiamondShine" and "Diamond" or "Gloss"
+			local f = overlayFolder:FindFirstChild(name)
+			if f then f.Position = UDim2.fromScale(-0.4 + ((t * 0.35) % 1.4), 0) end
+		elseif typeName == "Prism" or typeName == "SpeedLines" then
+			local prefix = typeName == "Prism" and "Prism" or "Speed"
+			for i = 1, 7 do
+				local f = overlayFolder:FindFirstChild(prefix..i)
+				if f then f.Position = UDim2.fromScale(-0.5 + ((t * (0.25 + i*0.035)) % 1.8), 0) end
+			end
+		elseif typeName == "Electric" then
+			for i = 1, 3 do
+				local f = overlayFolder:FindFirstChild("Electric"..i)
+				if f then f.Visible = math.sin(t * 12 + i * 2.1) > 0.15 end
+			end
+		elseif typeName == "Glitch" then
+			for i = 1, 3 do
+				local f = overlayFolder:FindFirstChild("Glitch"..i)
+				if f then
+					f.Position = UDim2.fromScale(math.sin(t*17+i)*0.03, 0.15*i + math.sin(t*23+i)*0.025)
+					f.Visible = math.sin(t * 19 + i) > 0.55
+				end
+			end
+		elseif typeName == "Static" then
+			for i = 1, 9 do
+				local f = overlayFolder:FindFirstChild("Static"..i)
+				if f then f.Visible = math.random() > 0.18 end
+			end
+		elseif typeName == "Starlight" then
+			for i = 1, 7 do
+				local f = overlayFolder:FindFirstChild("Star"..i)
+				if f then f.BackgroundTransparency = 0.15 + math.abs(math.sin(t * 2.5 + i)) * 0.75 end
+			end
+		end
+	end)
 
 	--==================================================
 	-- FULL LOGO OVERLAY / FX SYSTEM
@@ -1246,7 +1342,7 @@ local function createNametag(player, character)
 
 	local logoFxFolder = Instance.new("Folder")
 	logoFxFolder.Name = "LogoEffects"
-	logoFxFolder.Parent = billboard
+	logoFxFolder.Parent = starCircle
 
 	local function makeFxFrame(name, z)
 		local f = Instance.new("Frame")
@@ -1292,9 +1388,6 @@ local function createNametag(player, character)
 	-- Main FX target is the custom logo when present, otherwise the normal
 	-- logo image used by the nametag.
 	local logoFxTarget = customLogo or logoStar or logoGlow
-	if logoFxTarget then
-		logoFxTarget.AnchorPoint = Vector2.new(0.5,0.5)
-	end
 
 	-- Pulse / breathing / rotation / floating / tilt are applied directly.
 	local logoBaseSize = logoFxTarget and logoFxTarget.Size
@@ -1483,12 +1576,22 @@ local function createNametag(player, character)
 	local lastSpark = -10
 
 	local function setLogoScale(scale)
-		if not logoFxTarget or not logoBaseSize then return end
+		if not logoFxTarget or not logoBaseSize or not logoBasePosition then return end
+		local xOffset = logoBaseSize.X.Offset * scale
+		local yOffset = logoBaseSize.Y.Offset * scale
+		local xCenter = logoBasePosition.X.Offset + logoBaseSize.X.Offset * 0.5
+		local yCenter = logoBasePosition.Y.Offset + logoBaseSize.Y.Offset * 0.5
 		logoFxTarget.Size = UDim2.new(
 			logoBaseSize.X.Scale * scale,
-			math.floor(logoBaseSize.X.Offset * scale),
+			math.floor(xOffset),
 			logoBaseSize.Y.Scale * scale,
-			math.floor(logoBaseSize.Y.Offset * scale)
+			math.floor(yOffset)
+		)
+		logoFxTarget.Position = UDim2.new(
+			logoBasePosition.X.Scale,
+			math.floor(xCenter - xOffset * 0.5),
+			logoBasePosition.Y.Scale,
+			math.floor(yCenter - yOffset * 0.5)
 		)
 	end
 
@@ -2394,99 +2497,3 @@ end
 Players.PlayerAdded:Connect(function(player)
 	setupPlayer(player)
 end)
-
-	-- Overlay animation controller.
-	local overlayTime = math.random() * 100
-	local overlayConnections
-	overlayConnections = RunService.RenderStepped:Connect(function(dt)
-		if not overlayFolder.Parent then
-			overlayConnections:Disconnect()
-			return
-		end
-
-		if not overlayConfig.Enabled then
-			return
-		end
-
-		overlayTime += dt * speed
-		local t = overlayTime
-
-		-- Animate gradients.
-		for _, obj in ipairs(overlayObjects) do
-			local g = obj:FindFirstChildOfClass("UIGradient")
-			if g then
-				g.Rotation = (g.Rotation + dt * speed * 45) % 360
-			end
-		end
-
-		if typeName == "RainbowPulse" then
-			overlayFolder.BackgroundTransparency = 0.55 + math.sin(t * 2) * 0.18
-		elseif typeName == "EnergyPulse" then
-			local f = overlayFolder:FindFirstChild("Energy")
-			if f then
-				f.Position = UDim2.fromScale(-0.4 + ((t * 0.55) % 1.4), 0)
-			end
-		elseif typeName == "Scanline" then
-			local f = overlayFolder:FindFirstChild("Scanline")
-			if f then
-				f.Position = UDim2.fromScale(-0.02 + ((t * 0.65) % 1.04), 0)
-			end
-		elseif typeName == "LaserSweep" then
-			local f = overlayFolder:FindFirstChild("Laser")
-			if f then
-				f.Position = UDim2.fromScale(-0.08 + ((t * 0.75) % 1.16), 0)
-			end
-		elseif typeName == "ChromeSweep" or typeName == "GlassSweep"
-			or typeName == "DiamondShine" or typeName == "Gloss" then
-			local name = typeName == "ChromeSweep" and "Chrome"
-				or typeName == "GlassSweep" and "Glass"
-				or typeName == "DiamondShine" and "Diamond"
-				or "Gloss"
-			local f = overlayFolder:FindFirstChild(name)
-			if f then
-				f.Position = UDim2.fromScale(-0.4 + ((t * 0.35) % 1.4), 0)
-			end
-		elseif typeName == "Prism" or typeName == "SpeedLines" then
-			local prefix = typeName == "Prism" and "Prism" or "Speed"
-			for i = 1, 7 do
-				local f = overlayFolder:FindFirstChild(prefix..i)
-				if f then
-					f.Position = UDim2.fromScale(-0.5 + ((t * (0.25 + i*0.035)) % 1.8), 0)
-				end
-			end
-		elseif typeName == "Electric" then
-			for i = 1, 3 do
-				local f = overlayFolder:FindFirstChild("Electric"..i)
-				if f then
-					f.Visible = math.sin(t * 12 + i * 2.1) > 0.15
-				end
-			end
-		elseif typeName == "Glitch" then
-			for i = 1, 3 do
-				local f = overlayFolder:FindFirstChild("Glitch"..i)
-				if f then
-					f.Position = UDim2.fromScale(
-						(math.sin(t*17+i)*0.03),
-						0.15*i + math.sin(t*23+i)*0.025
-					)
-					f.Visible = math.sin(t * 19 + i) > 0.55
-				end
-			end
-		elseif typeName == "Static" then
-			for i = 1, 9 do
-				local f = overlayFolder:FindFirstChild("Static"..i)
-				if f then
-					f.Visible = math.random() > 0.18
-					f.BackgroundTransparency = 0.82 + math.random() * 0.14
-				end
-			end
-		elseif typeName == "Starlight" then
-			for i = 1, 7 do
-				local f = overlayFolder:FindFirstChild("Star"..i)
-				if f then
-					f.BackgroundTransparency = 0.15 + math.abs(math.sin(t * 2.5 + i)) * 0.75
-				end
-			end
-		end
-	end)
-
