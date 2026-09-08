@@ -1,4 +1,4 @@
-\--==================================================
+--==================================================
 -- DAYBREAK MULTIPLAYER NAMETAG
 --==================================================
 
@@ -45,7 +45,7 @@ local SETTINGS = {
 			Overlay = {
 				-- Banner overlay system. Change Type to test an overlay.
 				Enabled = true,
-				Type = "Starlight",
+				Type = "Prism",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
@@ -208,19 +208,28 @@ local ActivePlayers = {}
 local registryOnline = false
 
 local function httpRequest(options)
-	local requestFunction =
-		(syn and syn.request)
-		or (http and http.request)
-		or http_request
-		or request
-		or (fluxus and fluxus.request)
+	-- Some executors expose these globals as non-functions. Calling one directly
+	-- can produce the exact "attempt to call a nil value"/invalid call errors.
+	local requestFunction
+
+	if type(syn) == "table" and type(syn.request) == "function" then
+		requestFunction = syn.request
+	elseif type(http) == "table" and type(http.request) == "function" then
+		requestFunction = http.request
+	elseif type(http_request) == "function" then
+		requestFunction = http_request
+	elseif type(request) == "function" then
+		requestFunction = request
+	elseif type(fluxus) == "table" and type(fluxus.request) == "function" then
+		requestFunction = fluxus.request
+	end
 
 	if not requestFunction then
 		return nil
 	end
 
 	local ok, result = pcall(requestFunction, options)
-	if not ok then
+	if not ok or type(result) ~= "table" then
 		return nil
 	end
 
@@ -257,7 +266,12 @@ end
 --==================================================
 
 local HttpService = game:GetService("HttpService")
-local getAsset = getcustomasset or getsynasset
+local getAsset = nil
+if type(getcustomasset) == "function" then
+	getAsset = getcustomasset
+elseif type(getsynasset) == "function" then
+	getAsset = getsynasset
+end
 local AssetCache = {}
 
 --==================================================
