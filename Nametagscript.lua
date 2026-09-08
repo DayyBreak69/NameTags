@@ -46,7 +46,7 @@ local SETTINGS = {
 				-- Banner overlay system. Change Type to test an overlay.
 				Enabled = true,
 				Type = "Prism",
-				Speed = 1.2,
+				Speed = 0.35,
 				Glow = true,
 				GlowStrength = 2,
 				Rotation = 0,
@@ -208,28 +208,19 @@ local ActivePlayers = {}
 local registryOnline = false
 
 local function httpRequest(options)
-	-- Some executors expose these globals as non-functions. Calling one directly
-	-- can produce the exact "attempt to call a nil value"/invalid call errors.
-	local requestFunction
-
-	if type(syn) == "table" and type(syn.request) == "function" then
-		requestFunction = syn.request
-	elseif type(http) == "table" and type(http.request) == "function" then
-		requestFunction = http.request
-	elseif type(http_request) == "function" then
-		requestFunction = http_request
-	elseif type(request) == "function" then
-		requestFunction = request
-	elseif type(fluxus) == "table" and type(fluxus.request) == "function" then
-		requestFunction = fluxus.request
-	end
+	local requestFunction =
+		(syn and syn.request)
+		or (http and http.request)
+		or http_request
+		or request
+		or (fluxus and fluxus.request)
 
 	if not requestFunction then
 		return nil
 	end
 
 	local ok, result = pcall(requestFunction, options)
-	if not ok or type(result) ~= "table" then
+	if not ok then
 		return nil
 	end
 
@@ -266,12 +257,7 @@ end
 --==================================================
 
 local HttpService = game:GetService("HttpService")
-local getAsset = nil
-if type(getcustomasset) == "function" then
-	getAsset = getcustomasset
-elseif type(getsynasset) == "function" then
-	getAsset = getsynasset
-end
+local getAsset = getcustomasset or getsynasset
 local AssetCache = {}
 
 --==================================================
@@ -634,6 +620,9 @@ local function createNametag(player, character)
 	billboard.MaxDistance = SETTINGS.MaxDistance
 	billboard.ResetOnSpawn = false
 	billboard.Parent = character
+	-- Explicit root bounds prevent Scale-based descendants from collapsing.
+	billboard.Size = UDim2.fromOffset(SETTINGS.Width, SETTINGS.Height)
+	billboard.Enabled = true
 
 	--==================================================
 	-- OUTER CHROME
@@ -669,6 +658,9 @@ local function createNametag(player, character)
 	--==================================================
 
 	local panel = Instance.new("Frame")
+	panel.Size = UDim2.fromScale(1, 1)
+	panel.Position = UDim2.fromScale(0, 0)
+	panel.AnchorPoint = Vector2.new(0, 0)
 	panel.Size = UDim2.new(1, -6, 1, -6)
 	panel.Position = UDim2.fromOffset(3, 3)
 	panel.BackgroundColor3 = SETTINGS.Dark
@@ -742,6 +734,7 @@ local function createNametag(player, character)
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
+	rainbowContainer.AnchorPoint = Vector2.new(0, 0)
 	rainbowContainer.Position = UDim2.fromScale(0, 0)
 	rainbowContainer.ClipsDescendants = false
 	rainbowContainer.ZIndex = 50
@@ -1015,7 +1008,7 @@ local function createNametag(player, character)
 	local overlayConfig = tagConfig.Overlay or {
 		Enabled = true,
 		Type = "Prism",
-		Speed = 1.2,
+		Speed = 0.35,
 		Opacity = 0.55,
 		Glow = true,
 	}
@@ -1773,7 +1766,7 @@ local function createNametag(player, character)
 
 	local connection
 
-	connection = RunService.RenderStepped:Connect(function()
+	connection = RunService.RenderStepped:Connect(function(deltaTime)
 
 		if not character or not character.Parent or not head or not head.Parent then
 			if connection then connection:Disconnect() end
@@ -2040,7 +2033,7 @@ local function createNametag(player, character)
 		if overlayFolder and overlayFolder.Parent then
 			if overlayConfig.Enabled ~= false and overlayType ~= "ChromeSweep" then
 				overlayFolder.Visible = true
-				overlayTime += (1 / 60) * overlaySpeed
+				overlayTime += math.min(deltaTime, 0.1) * overlaySpeed
 				local ot = overlayTime
 
 				for i, f in ipairs(movingObjects) do
