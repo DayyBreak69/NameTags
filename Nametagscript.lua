@@ -980,11 +980,11 @@ local function createNametag(player, character)
 
 			star.Rotation = rotation
 			starGlow.Rotation = rotation
-			customLogo.Rotation = rotation
+			customLogo.Rotation = 0
 
 			logoStar.Rotation = rotation
 			logoGlow.Rotation = rotation
-			customLogoDistant.Rotation = rotation
+			customLogoDistant.Rotation = 0
 
 		end
 
