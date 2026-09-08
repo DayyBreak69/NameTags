@@ -43,9 +43,9 @@ local SETTINGS = {
 			Logo = "Catlogo.png",
 
 			Overlay = {
-				-- Banner overlays disabled in the clean build.
-				Enabled = false,
-				Type = "ShadowFlame",
+				-- Banner overlay system. Change Type to test an overlay.
+				Enabled = true,
+				Type = "Prism",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
@@ -993,17 +993,15 @@ local function createNametag(player, character)
 	--==================================================
 
 	local overlayConfig = tagConfig.Overlay or {
-		Enabled = false,
+		Enabled = true,
 		Type = "Prism",
 		Speed = 1.2,
 		Opacity = 0.55,
 		Glow = true,
 	}
 
-	-- CLEAN BUILD: banner overlays are completely disabled.
-	-- This prevents Prism/ChromeSweep/sweep-strip artifacts from being created
-	-- or shown, while leaving the banner, logo, border, and text intact.
-	overlayConfig.Enabled = false
+	-- Banner overlays are enabled when tagConfig.Overlay.Enabled is true.
+	-- Each player can choose an overlay by changing tagConfig.Overlay.Type.
 
 	local overlayFolder = Instance.new("Frame")
 	overlayFolder.Name = "BannerOverlay"
@@ -1012,7 +1010,7 @@ local function createNametag(player, character)
 	overlayFolder.BackgroundTransparency = 1
 	overlayFolder.BorderSizePixel = 0
 	overlayFolder.ClipsDescendants = true
-	overlayFolder.ZIndex = 4
+	overlayFolder.ZIndex = 2
 	overlayFolder.Visible = false
 	overlayFolder.Parent = panel
 
@@ -1026,7 +1024,7 @@ local function createNametag(player, character)
 		obj.Name = name
 		obj.BackgroundTransparency = 1
 		obj.BorderSizePixel = 0
-		obj.ZIndex = 5
+		obj.ZIndex = 2
 		obj.Parent = overlayFolder
 		table.insert(overlayObjects, obj)
 		return obj
@@ -1088,22 +1086,23 @@ local function createNametag(player, character)
 		-- outside the BillboardGui on some Roblox/executor UI renderers.
 		f.Size = UDim2.new(0, width, 1, 0)
 		f.Position = UDim2.new(0, -width, 0, 0)
-		f.BackgroundColor3 = Color3.fromRGB(235, 235, 240)
-		f.BackgroundTransparency = 0.78
+		f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		f.BackgroundTransparency = transparency or 0.78
 		f.Rotation = 0
 		f.ClipsDescendants = true
+		addOverlayGradient(f, seq, rotation or 0)
 
 		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(1, 0)
 		corner.Parent = f
 
-		-- Soft chrome halo.
+		-- Soft glow around the sweep. No hard-coded chrome/white core is used.
 		local halo = Instance.new("Frame")
 		halo.Name = "Halo"
-		halo.Size = UDim2.new(1, 10, 1, 0)
-		halo.Position = UDim2.new(0, -5, 0, 0)
-		halo.BackgroundColor3 = Color3.fromRGB(255, 180, 75)
-		halo.BackgroundTransparency = 0.90
+		halo.Size = UDim2.new(1, 8, 1, 0)
+		halo.Position = UDim2.new(0, -4, 0, 0)
+		halo.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		halo.BackgroundTransparency = 0.92
 		halo.BorderSizePixel = 0
 		halo.ZIndex = f.ZIndex
 		halo.Parent = f
@@ -1112,42 +1111,18 @@ local function createNametag(player, character)
 		haloCorner.CornerRadius = UDim.new(1, 0)
 		haloCorner.Parent = halo
 
-		-- Bright white chrome core.
-		local core = Instance.new("Frame")
-		core.Name = "Core"
-		core.Size = UDim2.new(0, 8, 1, 0)
-		core.Position = UDim2.new(0.5, -4, 0, 0)
-		core.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		core.BackgroundTransparency = 0.12
-		core.BorderSizePixel = 0
-		core.ZIndex = f.ZIndex + 1
-		core.Parent = f
-
-		local coreCorner = Instance.new("UICorner")
-		coreCorner.CornerRadius = UDim.new(1, 0)
-		coreCorner.Parent = core
-
-		-- Small warm edge so the reflection matches the orange/chrome theme.
-		local edge = Instance.new("Frame")
-		edge.Name = "OrangeEdge"
-		edge.Size = UDim2.new(0, 3, 0.82, 0)
-		edge.Position = UDim2.new(0.5, 5, 0.09, 0)
-		edge.BackgroundColor3 = Color3.fromRGB(255, 170, 60)
-		edge.BackgroundTransparency = 0.18
-		edge.BorderSizePixel = 0
-		edge.ZIndex = f.ZIndex + 1
-		edge.Parent = f
-
-		local edgeCorner = Instance.new("UICorner")
-		edgeCorner.CornerRadius = UDim.new(1, 0)
-		edgeCorner.Parent = edge
-
 		return f
 	end
 
-	if overlayType == "ChromeSweep" or overlayType == "GlassSweep" then
-		-- Moving chrome/glass beams are permanently disabled.
+	if overlayType == "ChromeSweep" then
+		-- ChromeSweep remains disabled because it is the original artifact we are removing.
 		sweep = nil
+	elseif overlayType == "GlassSweep" then
+		sweep = makeSweep("Sweep", 34, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 190, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245, 250, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 190, 255))
+		}), 0.68, 0)
 	elseif overlayType == "Holographic" or overlayType == "Iridescent" then
 		local f = addOverlay("ColorWash")
 		f.Size = UDim2.fromScale(1,1)
@@ -1183,9 +1158,19 @@ local function createNametag(player, character)
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255))
 		), 0)
 	elseif overlayType == "Prism" or overlayType == "SpeedLines" then
-		-- No moving strips. The old implementation reused makeSweep(),
-		-- which produced the white/chrome bars seen on the nametag.
-		strips = {}
+		-- Safe colored strips: these are deliberately NOT built with makeSweep(),
+		-- so Prism/SpeedLines cannot turn into the old white ChromeSweep bars.
+		for i = 1, 6 do
+			local f = addOverlay("Strip" .. i)
+			f.Size = UDim2.new(0, overlayType == "Prism" and 8 or 4, 1, 0)
+			f.Position = UDim2.fromScale(-0.5 - i * 0.2, -0.2)
+			f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			f.BackgroundTransparency = overlayType == "Prism" and 0.72 or 0.80
+			f.Rotation = 0
+			f.ClipsDescendants = true
+			addOverlayGradient(f, rainbowSequence, 0)
+			table.insert(strips, f)
+		end
 	elseif overlayType == "ColorShift" or overlayType == "Sunset" or overlayType == "Ocean"
 		or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
 		or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
@@ -1210,6 +1195,23 @@ local function createNametag(player, character)
 		f.Size = UDim2.fromScale(1,1)
 		f.BackgroundTransparency = 0.58
 		addOverlayGradient(f, palettes[overlayType], 0)
+	elseif overlayType == "EnergyPulse" then
+		sweep = makeSweep("Sweep", 42, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 130, 255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 255))
+		}), 0.72, 0)
+	elseif overlayType == "Scanline" then
+		scan = addOverlay("Scanline")
+		scan.Size = UDim2.new(1, 0, 0, 2)
+		scan.BackgroundColor3 = Color3.new(1, 1, 1)
+		scan.BackgroundTransparency = 0.35
+	elseif overlayType == "LaserSweep" then
+		laser = makeSweep("Laser", 5, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 50, 50)),
+			ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 50))
+		}), 0.45, 0)
 	elseif overlayType == "Glitch" or overlayType == "Static" then
 		for i=1,5 do
 			local f=addOverlay("Glitch"..i)
@@ -1232,11 +1234,6 @@ local function createNametag(player, character)
 			table.insert(strips,f)
 		end
 	end
-
-	-- CLEAN BUILD: remove the overlay container entirely.
-	-- This is stronger than simply hiding it and guarantees that no overlay
-	-- Frame, gradient, sweep, strip, or legacy visual can render.
-	overlayFolder:Destroy()
 
 	local overlayTime = 0
 
@@ -1991,8 +1988,7 @@ local function createNametag(player, character)
 		--==================================================
 
 		if overlayFolder and overlayFolder.Parent then
-			-- CLEAN BUILD: never re-enable the banner overlay.
-			if false and overlayConfig.Enabled then
+			if overlayConfig.Enabled then
 				overlayFolder.Visible = true
 				-- Use the already computed frame time instead of yielding.
 				local ot = time * overlaySpeed
