@@ -45,7 +45,7 @@ local SETTINGS = {
 			Overlay = {
 				-- Banner overlay system. Change Type to test an overlay.
 				Enabled = true,
-				Type = "Prism",
+				Type = "Starlight",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
