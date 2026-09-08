@@ -1,4 +1,4 @@
---==================================================
+\--==================================================
 -- DAYBREAK MULTIPLAYER NAMETAG
 --==================================================
 
@@ -45,7 +45,7 @@ local SETTINGS = {
 			Overlay = {
 				-- Banner overlay system. Change Type to test an overlay.
 				Enabled = true,
-				Type = "Starlight",
+				Type = "Prism",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
@@ -605,7 +605,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "OverlapCleaned")
+	billboard:SetAttribute("DayBreakNametagVersion", "BannerOverlayV2")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -988,9 +988,15 @@ local function createNametag(player, character)
 
 
 	--==================================================
-	-- BANNER OVERLAY SYSTEM (CLEAN / SINGLE LAYER)
-	-- Change ONLY tagConfig.Overlay.Type.
+	-- BANNER OVERLAY SYSTEM (REBUILT)
 	--==================================================
+	-- The previous overlay implementation mixed several rendering methods
+	-- (rotated gradients, sweep frames, and shared strip logic). That made
+	-- different overlay types interfere with each other and made it hard to
+	-- tell whether an effect was actually being created.
+	--
+	-- This version gives every overlay its own objects and keeps the overlay
+	-- strictly inside the banner area. ChromeSweep is intentionally excluded.
 
 	local overlayConfig = tagConfig.Overlay or {
 		Enabled = true,
@@ -1000,27 +1006,31 @@ local function createNametag(player, character)
 		Glow = true,
 	}
 
-	-- Banner overlays are enabled when tagConfig.Overlay.Enabled is true.
-	-- Each player can choose an overlay by changing tagConfig.Overlay.Type.
+	local overlayType = tostring(overlayConfig.Type or "Prism")
+	local overlaySpeed = tonumber(overlayConfig.Speed) or 1.2
+	local overlayOpacity = math.clamp(tonumber(overlayConfig.Opacity) or 0.55, 0, 1)
 
 	local overlayFolder = Instance.new("Frame")
 	overlayFolder.Name = "BannerOverlay"
-	overlayFolder.Size = UDim2.fromScale(1, 1)
-	overlayFolder.Position = UDim2.fromScale(0, 0)
+	overlayFolder.Size = UDim2.new(1, -66, 1, 0)
+	overlayFolder.Position = UDim2.fromOffset(64, 0)
 	overlayFolder.BackgroundTransparency = 1
 	overlayFolder.BorderSizePixel = 0
 	overlayFolder.ClipsDescendants = true
 	overlayFolder.ZIndex = 2
-	overlayFolder.Visible = false
+	overlayFolder.Visible = overlayConfig.Enabled ~= false
 	overlayFolder.Parent = panel
 
 	local overlayCorner = Instance.new("UICorner")
-	overlayCorner.CornerRadius = UDim.new(0, 18)
+	overlayCorner.CornerRadius = UDim.new(0, 16)
 	overlayCorner.Parent = overlayFolder
 
 	local overlayObjects = {}
-	local function addOverlay(name, className)
-		local obj = Instance.new(className or "Frame")
+	local movingObjects = {}
+	local twinkleObjects = {}
+
+	local function addOverlay(name)
+		local obj = Instance.new("Frame")
 		obj.Name = name
 		obj.BackgroundTransparency = 1
 		obj.BorderSizePixel = 0
@@ -1030,13 +1040,10 @@ local function createNametag(player, character)
 		return obj
 	end
 
-	local function addOverlayGradient(obj, sequence, rotation, transparencySequence)
+	local function addGradient(obj, sequence, rotation)
 		local g = Instance.new("UIGradient")
 		g.Color = sequence
 		g.Rotation = rotation or 0
-		if transparencySequence then
-			g.Transparency = transparencySequence
-		end
 		g.Parent = obj
 		return g
 	end
@@ -1052,186 +1059,215 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,0,180)),
 	})
 
-	local chromeSequence = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(70,70,80)),
-		ColorSequenceKeypoint.new(0.30, Color3.fromRGB(255,255,255)),
-		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(140,140,150)),
-		ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255,255,255)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(60,60,70)),
-	})
-
-	local whiteSequence = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
-		ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-		ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
-	})
-
-	local overlayType = tostring(overlayConfig.Type or "Prism")
-	local overlaySpeed = tonumber(overlayConfig.Speed) or 1.2
-	local overlayOpacity = math.clamp(tonumber(overlayConfig.Opacity) or 0.55, 0, 1)
-
-	local overlayMain = addOverlay("Main")
-	overlayMain.Size = UDim2.fromScale(1,1)
-	overlayMain.BackgroundTransparency = 1
-
-	local sweep
-	local scan
-	local laser
-	local strips = {}
-
-	local function makeSweep(name, width, seq, transparency, rotation)
+	local function addWash(name, sequence, transparency)
 		local f = addOverlay(name)
-		-- IMPORTANT: the sweep is a plain, NON-ROTATED vertical beam.
-		-- Using a rotated Frame here can render as a large quadrilateral
-		-- outside the BillboardGui on some Roblox/executor UI renderers.
-		f.Size = UDim2.new(0, width, 1, 0)
-		f.Position = UDim2.new(0, -width, 0, 0)
-		f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		f.BackgroundTransparency = transparency or 0.78
-		f.Rotation = 0
-		f.ClipsDescendants = true
-		addOverlayGradient(f, seq, rotation or 0)
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(1, 0)
-		corner.Parent = f
-
-		-- Soft glow around the sweep. No hard-coded chrome/white core is used.
-		local halo = Instance.new("Frame")
-		halo.Name = "Halo"
-		halo.Size = UDim2.new(1, 8, 1, 0)
-		halo.Position = UDim2.new(0, -4, 0, 0)
-		halo.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		halo.BackgroundTransparency = 0.92
-		halo.BorderSizePixel = 0
-		halo.ZIndex = f.ZIndex
-		halo.Parent = f
-
-		local haloCorner = Instance.new("UICorner")
-		haloCorner.CornerRadius = UDim.new(1, 0)
-		haloCorner.Parent = halo
-
+		f.Size = UDim2.fromScale(1, 1)
+		f.Position = UDim2.fromScale(0, 0)
+		f.BackgroundColor3 = Color3.new(1,1,1)
+		f.BackgroundTransparency = math.clamp(transparency + 0.05, 0, 1)
+		addGradient(f, sequence, 0)
 		return f
 	end
 
-	if overlayType == "ChromeSweep" then
-		-- ChromeSweep remains disabled because it is the original artifact we are removing.
-		sweep = nil
-	elseif overlayType == "GlassSweep" then
-		sweep = makeSweep("Sweep", 34, ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 190, 255)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245, 250, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 190, 255))
-		}), 0.68, 0)
-	elseif overlayType == "Holographic" or overlayType == "Iridescent" then
-		local f = addOverlay("ColorWash")
-		f.Size = UDim2.fromScale(1,1)
-		f.BackgroundTransparency = 1 - overlayOpacity
-		addOverlayGradient(f, overlayType == "Holographic" and ColorSequence.new(
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,60,220)),
-			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(70,190,255)),
-			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(180,70,255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,60,220))
-		) or ColorSequence.new(
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,190,230)),
-			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(180,230,255)),
-			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(225,190,255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190))
-		), 0)
-	elseif overlayType == "MetallicFlow" then
-		local f = addOverlay("Metallic")
-		f.Size = UDim2.fromScale(1,1)
-		f.BackgroundTransparency = 0.55
-		addOverlayGradient(f, chromeSequence, 0)
-	elseif overlayType == "RainbowFlow" or overlayType == "RainbowPulse" or overlayType == "NeonRainbow" then
-		local f = addOverlay("Rainbow")
-		f.Size = UDim2.fromScale(1,1)
-		f.BackgroundTransparency = overlayType == "NeonRainbow" and 0.48 or 0.65
-		addOverlayGradient(f, rainbowSequence, 0)
-	elseif overlayType == "Aurora" then
-		local f = addOverlay("Aurora")
-		f.Size = UDim2.fromScale(1,1)
-		f.BackgroundTransparency = 0.55
-		addOverlayGradient(f, ColorSequence.new(
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(20,255,150)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40,150,255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255))
-		), 0)
-	elseif overlayType == "Prism" or overlayType == "SpeedLines" then
-		-- Safe colored strips: these are deliberately NOT built with makeSweep(),
-		-- so Prism/SpeedLines cannot turn into the old white ChromeSweep bars.
-		for i = 1, 6 do
-			local f = addOverlay("Strip" .. i)
-			f.Size = UDim2.new(0, overlayType == "Prism" and 8 or 4, 1, 0)
-			f.Position = UDim2.fromScale(-0.5 - i * 0.2, -0.2)
-			f.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			f.BackgroundTransparency = overlayType == "Prism" and 0.72 or 0.80
-			f.Rotation = 0
-			f.ClipsDescendants = true
-			addOverlayGradient(f, rainbowSequence, 0)
-			table.insert(strips, f)
-		end
-	elseif overlayType == "ColorShift" or overlayType == "Sunset" or overlayType == "Ocean"
-		or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
-		or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
-		or overlayType == "Cyber" or overlayType == "Galaxy" or overlayType == "Cosmic"
-		or overlayType == "Void" then
-		local palettes = {
-			ColorShift = ColorSequence.new(Color3.fromRGB(255,70,100), Color3.fromRGB(70,150,255)),
-			Sunset = ColorSequence.new(Color3.fromRGB(255,100,30), Color3.fromRGB(140,40,190)),
-			Ocean = ColorSequence.new(Color3.fromRGB(0,70,160), Color3.fromRGB(0,220,255)),
-			Fire = ColorSequence.new(Color3.fromRGB(120,0,0), Color3.fromRGB(255,190,0)),
-			Ice = ColorSequence.new(Color3.fromRGB(40,130,255), Color3.fromRGB(220,255,255)),
-			Electric = ColorSequence.new(Color3.fromRGB(80,120,255), Color3.fromRGB(220,100,255)),
-			Lava = ColorSequence.new(Color3.fromRGB(70,0,0), Color3.fromRGB(255,60,0)),
-			Toxic = ColorSequence.new(Color3.fromRGB(20,80,0), Color3.fromRGB(180,255,0)),
-			ShadowFlame = ColorSequence.new(Color3.fromRGB(20,0,30), Color3.fromRGB(180,30,80)),
-			Cyber = ColorSequence.new(Color3.fromRGB(0,255,255), Color3.fromRGB(220,0,255)),
-			Galaxy = ColorSequence.new(Color3.fromRGB(20,0,70), Color3.fromRGB(80,20,180)),
-			Cosmic = ColorSequence.new(Color3.fromRGB(10,0,50), Color3.fromRGB(100,30,220)),
-			Void = ColorSequence.new(Color3.fromRGB(0,0,0), Color3.fromRGB(45,0,70)),
-		}
-		local f = addOverlay("ColorWash")
-		f.Size = UDim2.fromScale(1,1)
-		f.BackgroundTransparency = 0.58
-		addOverlayGradient(f, palettes[overlayType], 0)
-	elseif overlayType == "EnergyPulse" then
-		sweep = makeSweep("Sweep", 42, ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 130, 255)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 255))
-		}), 0.72, 0)
-	elseif overlayType == "Scanline" then
-		scan = addOverlay("Scanline")
-		scan.Size = UDim2.new(1, 0, 0, 2)
-		scan.BackgroundColor3 = Color3.new(1, 1, 1)
-		scan.BackgroundTransparency = 0.35
-	elseif overlayType == "LaserSweep" then
-		laser = makeSweep("Laser", 5, ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 50, 50)),
-			ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 50))
-		}), 0.45, 0)
-	elseif overlayType == "Glitch" or overlayType == "Static" then
-		for i=1,5 do
-			local f=addOverlay("Glitch"..i)
-			f.Size=UDim2.fromScale(1,0.04)
-			f.Position=UDim2.fromScale(0,(i-1)*0.22)
-			f.BackgroundColor3=Color3.fromRGB(255,255,255)
-			f.BackgroundTransparency=0.72
-			table.insert(strips,f)
-		end
-	elseif overlayType == "Starlight" then
-		for i=1,8 do
-			local f=addOverlay("Star"..i)
-			f.Size=UDim2.fromOffset(3,3)
-			f.Position=UDim2.fromScale((i*0.137)%1,(i*0.271)%1)
-			f.BackgroundColor3=Color3.new(1,1,1)
-			f.BackgroundTransparency=0.2
-			local c=Instance.new("UICorner")
-			c.CornerRadius=UDim.new(1,0)
-			c.Parent=f
-			table.insert(strips,f)
+	local function addSweep(name, width, sequence, transparency)
+		local f = addOverlay(name)
+		f.Size = UDim2.new(0, width, 1, 0)
+		f.Position = UDim2.new(-0.25, 0, 0, 0)
+		f.BackgroundColor3 = Color3.new(1,1,1)
+		f.BackgroundTransparency = transparency
+		addGradient(f, sequence, 0)
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(1,0)
+		c.Parent = f
+		table.insert(movingObjects, f)
+		return f
+	end
+
+	if overlayConfig.Enabled ~= false then
+		if overlayType == "ChromeSweep" then
+			-- Permanently disabled. This is the original artifact.
+			overlayFolder.Visible = false
+
+		elseif overlayType == "Starlight" then
+			for i = 1, 24 do
+				local f = addOverlay("Star" .. i)
+				local size = (i % 4 == 0) and 6 or ((i % 2 == 0) and 5 or 4)
+				f.Size = UDim2.fromOffset(size, size)
+				f.Position = UDim2.fromScale(
+					((i * 0.173) % 0.92) + 0.04,
+					((i * 0.317) % 0.82) + 0.05
+				)
+				f.BackgroundColor3 = (i % 4 == 0)
+					and Color3.fromRGB(140,220,255)
+					or Color3.new(1,1,1)
+				f.BackgroundTransparency = 0.05
+				local glow = Instance.new("UIStroke")
+				glow.Thickness = 1
+				glow.Transparency = 0.35
+				glow.Color = f.BackgroundColor3
+				glow.Parent = f
+				local c = Instance.new("UICorner")
+				c.CornerRadius = UDim.new(1,0)
+				c.Parent = f
+				table.insert(twinkleObjects, f)
+			end
+
+		elseif overlayType == "Prism" then
+			for i = 1, 5 do
+				local f = addOverlay("Prism" .. i)
+				f.Size = UDim2.new(0, 7, 1, 0)
+				f.Position = UDim2.new(-0.4 - i * 0.28, 0, 0, 0)
+				local prismColors = {
+					Color3.fromRGB(255,70,120),
+					Color3.fromRGB(255,170,60),
+					Color3.fromRGB(80,255,190),
+					Color3.fromRGB(80,170,255),
+					Color3.fromRGB(210,80,255),
+				}
+				f.BackgroundColor3 = prismColors[i]
+				f.BackgroundTransparency = 0.35
+				local g = Instance.new("UIGradient")
+				g.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, prismColors[i]),
+					ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+					ColorSequenceKeypoint.new(1, prismColors[i]),
+				})
+				g.Transparency = NumberSequence.new({
+					NumberSequenceKeypoint.new(0, 0.85),
+					NumberSequenceKeypoint.new(0.5, 0.10),
+					NumberSequenceKeypoint.new(1, 0.85),
+				})
+				g.Parent = f
+				table.insert(movingObjects, f)
+			end
+
+		elseif overlayType == "SpeedLines" then
+			for i = 1, 8 do
+				local f = addOverlay("SpeedLine" .. i)
+				f.Size = UDim2.new(0, 3, 1, 0)
+				f.Position = UDim2.new(-0.5 - i * 0.20, 0, 0, 0)
+				f.BackgroundColor3 = Color3.new(1,1,1)
+				f.BackgroundTransparency = 0.88
+				table.insert(movingObjects, f)
+			end
+
+		elseif overlayType == "Holographic" then
+			addWash("Holographic", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,70,220)),
+				ColorSequenceKeypoint.new(0.33, Color3.fromRGB(70,190,255)),
+				ColorSequenceKeypoint.new(0.66, Color3.fromRGB(180,70,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,70,220)),
+			}), 1 - math.min(overlayOpacity, 0.45))
+
+		elseif overlayType == "Iridescent" then
+			addWash("Iridescent", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,190,230)),
+				ColorSequenceKeypoint.new(0.35, Color3.fromRGB(180,230,255)),
+				ColorSequenceKeypoint.new(0.7, Color3.fromRGB(225,190,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190)),
+			}), 0.70)
+
+		elseif overlayType == "RainbowFlow" or overlayType == "RainbowPulse" or overlayType == "NeonRainbow" then
+			local f = addWash("Rainbow", rainbowSequence, overlayType == "NeonRainbow" and 0.52 or 0.68)
+			f:SetAttribute("RainbowFlow", true)
+
+		elseif overlayType == "Aurora" then
+			addWash("Aurora", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(20,255,150)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40,150,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255)),
+			}), 0.62)
+
+		elseif overlayType == "MetallicFlow" then
+			addWash("Metallic", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(70,70,80)),
+				ColorSequenceKeypoint.new(0.30, Color3.fromRGB(255,255,255)),
+				ColorSequenceKeypoint.new(0.50, Color3.fromRGB(140,140,150)),
+				ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255,255,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60,60,70)),
+			}), 0.62)
+
+		elseif overlayType == "GlassSweep" then
+			addSweep("GlassSweep", 26, ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(120,190,255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(245,250,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(120,190,255)),
+			}), 0.72)
+
+		elseif overlayType == "DiamondShine" then
+			addSweep("DiamondShine", 18, ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+			}), 0.82)
+
+		elseif overlayType == "Gloss" then
+			addSweep("Gloss", 22, ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+			}), 0.88)
+
+		elseif overlayType == "EnergyPulse" then
+			addSweep("EnergyPulse", 30, ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(70,130,255)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,255,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(70,130,255)),
+			}), 0.78)
+
+		elseif overlayType == "LaserSweep" then
+			addSweep("LaserSweep", 5, ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255,50,50)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,50,50)),
+			}), 0.40)
+
+		elseif overlayType == "Scanline" then
+			local f = addOverlay("Scanline")
+			f.Size = UDim2.new(1,0,0,2)
+			f.Position = UDim2.fromScale(0,-0.1)
+			f.BackgroundColor3 = Color3.new(1,1,1)
+			f.BackgroundTransparency = 0.45
+			table.insert(movingObjects, f)
+
+		elseif overlayType == "Glitch" or overlayType == "Static" then
+			for i = 1, 7 do
+				local f = addOverlay("Glitch" .. i)
+				f.Size = UDim2.new(1,0,0,2 + (i % 2))
+				f.Position = UDim2.fromScale(0, (i - 1) / 7)
+				f.BackgroundColor3 = (i % 2 == 0) and Color3.fromRGB(255,80,150) or Color3.fromRGB(80,220,255)
+				f.BackgroundTransparency = overlayType == "Glitch" and 0.50 or 0.72
+				table.insert(movingObjects, f)
+			end
+
+		elseif overlayType == "ColorShift" or overlayType == "Sunset" or overlayType == "Ocean"
+			or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
+			or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
+			or overlayType == "Cyber" or overlayType == "Galaxy" or overlayType == "Cosmic"
+			or overlayType == "Void" then
+			local palettes = {
+				ColorShift = ColorSequence.new(Color3.fromRGB(255,70,100), Color3.fromRGB(70,150,255)),
+				Sunset = ColorSequence.new(Color3.fromRGB(255,100,30), Color3.fromRGB(140,40,190)),
+				Ocean = ColorSequence.new(Color3.fromRGB(0,70,160), Color3.fromRGB(0,220,255)),
+				Fire = ColorSequence.new(Color3.fromRGB(120,0,0), Color3.fromRGB(255,190,0)),
+				Ice = ColorSequence.new(Color3.fromRGB(40,130,255), Color3.fromRGB(220,255,255)),
+				Electric = ColorSequence.new(Color3.fromRGB(80,120,255), Color3.fromRGB(220,100,255)),
+				Lava = ColorSequence.new(Color3.fromRGB(70,0,0), Color3.fromRGB(255,60,0)),
+				Toxic = ColorSequence.new(Color3.fromRGB(20,80,0), Color3.fromRGB(180,255,0)),
+				ShadowFlame = ColorSequence.new(Color3.fromRGB(20,0,30), Color3.fromRGB(180,30,80)),
+				Cyber = ColorSequence.new(Color3.fromRGB(0,255,255), Color3.fromRGB(220,0,255)),
+				Galaxy = ColorSequence.new(Color3.fromRGB(20,0,70), Color3.fromRGB(80,20,180)),
+				Cosmic = ColorSequence.new(Color3.fromRGB(10,0,50), Color3.fromRGB(100,30,220)),
+				Void = ColorSequence.new(Color3.fromRGB(0,0,0), Color3.fromRGB(45,0,70)),
+			}
+			addWash("ColorWash", palettes[overlayType], 0.60)
+		else
+			-- Unknown type: create a visible but harmless fallback so the user
+			-- can immediately tell that the overlay system is alive.
+			local f = addOverlay("OverlayFallback")
+			f.Size = UDim2.fromScale(1,1)
+			f.BackgroundColor3 = Color3.fromRGB(255,80,180)
+			f.BackgroundTransparency = 0.82
 		end
 	end
 
@@ -1281,7 +1317,7 @@ local function createNametag(player, character)
 	ownerNameGradient.Enabled = (getRole(player) == "OWNER") and SETTINGS.OwnerRainbowNameEnabled
 	ownerNameGradient.Parent = nameLabel
 
-	nameLabel.ZIndex = 3
+	nameLabel.ZIndex = 6
 	nameLabel.Parent = panel
 
 	--==================================================
@@ -1305,7 +1341,7 @@ local function createNametag(player, character)
 	subtitle.TextStrokeColor3 = SETTINGS.Dark
 	subtitle.TextStrokeTransparency = 0.4
 
-	subtitle.ZIndex = 2
+	subtitle.ZIndex = 6
 	subtitle.Parent = panel
 
 	--==================================================
@@ -1984,48 +2020,57 @@ local function createNametag(player, character)
 
 
 		--==================================================
-		-- BANNER OVERLAY ANIMATION (SAFE NON-ROTATING SWEEP)
+		-- BANNER OVERLAY ANIMATION
 		--==================================================
 
 		if overlayFolder and overlayFolder.Parent then
-			if overlayConfig.Enabled then
+			if overlayConfig.Enabled ~= false and overlayType ~= "ChromeSweep" then
 				overlayFolder.Visible = true
-				-- Use the already computed frame time instead of yielding.
-				local ot = time * overlaySpeed
+				overlayTime += (1 / 60) * overlaySpeed
+				local ot = overlayTime
+
+				for i, f in ipairs(movingObjects) do
+					if overlayType == "Prism" then
+						local speed = 0.16 + i * 0.018
+						f.Position = UDim2.new(-0.45 + ((ot * speed) % 1.55), 0, 0, 0)
+					elseif overlayType == "SpeedLines" then
+						local speed = 0.28 + i * 0.035
+						f.Position = UDim2.new(-0.35 + ((ot * speed) % 1.45), 0, 0, 0)
+					elseif overlayType == "Scanline" then
+						f.Position = UDim2.fromScale(0, -0.08 + ((ot * 0.45) % 1.16))
+					elseif overlayType == "Glitch" or overlayType == "Static" then
+						f.Visible = math.random() > (overlayType == "Glitch" and 0.25 or 0.08)
+					else
+						local progress = -0.30 + ((ot * 0.30) % 1.55)
+						f.Position = UDim2.new(progress, 0, 0, 0)
+					end
+				end
+
+				for i, f in ipairs(twinkleObjects) do
+					f.BackgroundTransparency = 0.08 + math.abs(math.sin(ot * 2.2 + i * 1.7)) * 0.48
+				end
 
 				for _, obj in ipairs(overlayObjects) do
 					local g = obj:FindFirstChildOfClass("UIGradient")
 					if g then
-						-- Sweeps move horizontally; their gradient stays horizontal.
-						if obj ~= sweep and obj ~= scan and obj ~= laser then
-							g.Rotation = (ot * 35) % 360
+						if overlayType == "RainbowFlow" or overlayType == "RainbowPulse"
+							or overlayType == "NeonRainbow" or overlayType == "Holographic"
+							or overlayType == "Iridescent" or overlayType == "Aurora"
+							or overlayType == "MetallicFlow" or overlayType == "ColorShift"
+							or overlayType == "Sunset" or overlayType == "Ocean"
+							or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
+							or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
+							or overlayType == "Cyber" or overlayType == "Galaxy" or overlayType == "Cosmic"
+							or overlayType == "Void" then
+							g.Offset = Vector2.new(((ot * 0.12) % 1.2) - 0.1, 0)
 						else
-							g.Rotation = 0
+							g.Offset = Vector2.new(0, 0)
 						end
 					end
 				end
 
-				if sweep then
-					local sweepProgress = (ot * 0.30) % 1.30
-					sweep.Position = UDim2.new(-0.10 + sweepProgress, 0, 0, 0)
-				end
-				if scan then
-					scan.Position = UDim2.fromScale(0, -0.1 + ((ot * 0.55) % 1.2))
-				end
-				if laser then
-					laser.Position = UDim2.fromScale(-0.08 + ((ot * 0.65) % 1.16), -0.2)
-				end
-				for i, f in ipairs(strips) do
-					if overlayType == "Prism" or overlayType == "SpeedLines" then
-						f.Position = UDim2.fromScale(-0.5 + ((ot * (0.18 + i*0.025)) % 1.8), -0.2)
-					elseif overlayType == "Glitch" or overlayType == "Static" then
-						f.Visible = math.random() > (overlayType == "Glitch" and 0.28 or 0.08)
-					elseif overlayType == "Starlight" then
-						f.BackgroundTransparency = 0.15 + math.abs(math.sin(time*2.5+i))*0.75
-					end
-				end
 				if overlayType == "RainbowPulse" then
-					overlayFolder.BackgroundTransparency = 0.84 - math.abs(math.sin(time*2))*0.18
+					overlayFolder.BackgroundTransparency = 0.90 - math.abs(math.sin(ot * 2)) * 0.08
 				end
 			else
 				overlayFolder.Visible = false
