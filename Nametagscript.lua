@@ -1114,8 +1114,10 @@ local function createNametag(player, character)
 	end
 
 	if overlayType == "ChromeSweep" then
-		-- ChromeSweep deliberately uses the safe solid-beam implementation above.
-		sweep = makeSweep("Sweep", 26, chromeSequence, 1, 0)
+		-- ChromeSweep disabled here because the moving beam was producing
+		-- the unwanted rectangular/vertical bar on some clients.
+		-- The rest of the banner effects and rainbow border remain unchanged.
+		sweep = nil
 	elseif overlayType == "GlassSweep" then
 		sweep = makeSweep("Sweep", 34, ColorSequence.new(
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
