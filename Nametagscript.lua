@@ -317,6 +317,11 @@ end
 local LOGO_BASE_URL =
 	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/Logos/"
 
+-- CDN fallback. This avoids some executors/network setups that have trouble
+-- fetching binary files directly from raw.githubusercontent.com.
+local LOGO_CDN_URL =
+	"https://cdn.jsdelivr.net/gh/DayyBreak69/NameTags@main/Logos/"
+
 local LOGO_FOLDER = "DayBreak/Logos"
 local LOGO_SESSION = tostring(math.floor(os.clock() * 1000000))
 
@@ -345,30 +350,45 @@ local function downloadLogo(filename)
 		pcall(makefolder, LOGO_FOLDER)
 	end
 
-	local url = LOGO_BASE_URL .. safeName
+	-- Try the CDN first, then GitHub Raw.
+	local urls = {
+		LOGO_CDN_URL .. safeName,
+		LOGO_BASE_URL .. safeName,
+	}
+
 	local body = nil
+	local successfulUrl = nil
 
-	local okHttp, httpBody = pcall(function()
-		return game:HttpGet(url)
-	end)
-
-	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
-		body = httpBody
-	end
-
-	if not body then
+	for _, url in ipairs(urls) do
+		-- Executor HTTP request first so we can verify the HTTP status.
 		local result = httpRequest({
 			Url = url,
 			Method = "GET",
 		})
 
-		if result and tonumber(result.StatusCode) == 200 and type(result.Body) == "string" then
+		if result and tonumber(result.StatusCode) == 200
+			and type(result.Body) == "string"
+			and #result.Body > 0 then
 			body = result.Body
+			successfulUrl = url
+			break
+		end
+
+		-- Fallback to Roblox HttpGet.
+		local okHttp, httpBody = pcall(function()
+			return game:HttpGet(url)
+		end)
+
+		if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+			body = httpBody
+			successfulUrl = url
+			break
 		end
 	end
 
 	if not body then
 		warn("[DayBreak] Failed to download logo:", safeName)
+		warn("[DayBreak] Tried CDN and GitHub Raw:", safeName)
 		return nil
 	end
 
@@ -386,6 +406,7 @@ local function downloadLogo(filename)
 
 	if not asset then
 		warn("[DayBreak] Downloaded logo but could not load asset:", safeName)
+		warn("[DayBreak] Source:", successfulUrl or "unknown")
 		return nil
 	end
 
