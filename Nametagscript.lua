@@ -37,21 +37,21 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			DisplayName = "DayDay",
+			DisplayName = "DayBreak",
 			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-			DisplayName = "Day's Bitch",
+			DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
 
 		["Chloeeafm"] = {
 			Role = "Admin",
-			DisplayName = "Owned By Nigger",
-			Banner = "Chloe123.png",
+			DisplayName = "Owned By Chloe",
+			Banner = "Chloe.png",
 			BackgroundTransparency = 0.05,
 		},
 
@@ -226,14 +226,13 @@ local function downloadBanner(filename)
 
 	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
 
-	-- Use a fresh local filename each script execution so an edited
-	-- GitHub banner cannot be replaced by an old executor asset cache.
+	-- Fresh local filename prevents the executor from reusing an older banner.
 	local localPath =
 		BANNER_FOLDER .. "/" ..
-		safeName:gsub("%.png$", "") .. "_" .. BANNER_SESSION .. ".png"
+		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. BANNER_SESSION .. ".png"
 
 	if not writefile then
-		warn("[DayBreak] Executor does not support writefile; cannot cache GitHub banners.")
+		warn("[DayBreak] Executor does not support writefile.")
 		return nil
 	end
 
@@ -245,22 +244,17 @@ local function downloadBanner(filename)
 	local url = BANNER_BASE_URL .. safeName
 	local body = nil
 
-	-- Use game:HttpGet first. This is important because some executors
-	-- return binary GitHub PNG data correctly through HttpGet but do not
-	-- expose it correctly through their request() response object.
+	-- First try game:HttpGet. Do not inspect the binary contents here;
+	-- valid PNG binary data can be represented differently by executors.
 	local okHttp, httpBody = pcall(function()
 		return game:HttpGet(url)
 	end)
 
-	if okHttp and type(httpBody) == "string" and #httpBody > 8 then
-		-- Check for the PNG signature before saving it.
-		local pngSignature = "\137PNG\r\n\26\n"
-		if httpBody:sub(1, 8) == pngSignature then
-			body = httpBody
-		end
+	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+		body = httpBody
 	end
 
-	-- Fallback to the executor request API.
+	-- Fallback to executor HTTP request.
 	if not body then
 		local result = httpRequest({
 			Url = url,
@@ -273,7 +267,7 @@ local function downloadBanner(filename)
 	end
 
 	if not body then
-		warn("[DayBreak] Failed to download valid PNG banner:", safeName)
+		warn("[DayBreak] Failed to download banner:", safeName)
 		return nil
 	end
 
@@ -286,13 +280,12 @@ local function downloadBanner(filename)
 		return nil
 	end
 
-	-- Never reuse an older in-memory asset for this path.
 	AssetCache[localPath] = nil
 
 	local asset = loadLocalAsset(localPath)
 
 	if not asset then
-		warn("[DayBreak] Banner downloaded but could not be loaded:", safeName)
+		warn("[DayBreak] Downloaded banner but could not load asset:", safeName)
 		return nil
 	end
 
