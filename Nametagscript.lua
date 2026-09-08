@@ -50,7 +50,7 @@ local SETTINGS = {
 		["DayyBreak66"] = {
 			Role = "OWNER",
 		DisplayName = "DayDay",
-			Banner = "DayyBreak66.png",
+			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
