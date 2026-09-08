@@ -26,6 +26,7 @@ local SETTINGS = {
 	-- Banners are hosted in the GitHub /banners folder.
 	-- Use Roblox UserIds when possible so tags stay tied to the correct person.
 	-- Banner is ONLY the filename, for example: "DayyBreak66.png"
+	-- DisplayName is optional. If omitted, the player's normal Roblox DisplayName is used.
 	PlayerTags = {
 		-- Recommended: use UserId
 		-- [123456789] = {
@@ -36,23 +37,20 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			Banner = "DayyBreak66.png",
+			DisplayName = "DayBreak",
+			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
+			DisplayName = "Haylee",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
-		},
-		["Chloeeafm"] = {
-			Role = "Admin",
-		DisplayName = "Owned By Nigger",
-			Banner = "Chloe123.png",
-			BackgroundTrasparency = 0.05,
 		},
 
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
+		--	DisplayName = "Custom Name",
 		--	Banner = "Friend1.png",
 		--	BackgroundTransparency = 0.05,
 		-- },
@@ -267,6 +265,15 @@ local function getTagConfig(player)
 	return SETTINGS.PlayerTags[player.UserId]
 		or SETTINGS.PlayerTags[player.Name]
 		or {}
+end
+
+--==================================================
+-- CUSTOM DISPLAY NAME
+--==================================================
+
+local function getNametagName(player)
+	local config = getTagConfig(player)
+	return config.DisplayName or player.DisplayName
 end
 
 --==================================================
@@ -496,8 +503,8 @@ local function createNametag(player, character)
 	nameLabel.Position = UDim2.fromOffset(78, 10)
 	nameLabel.BackgroundTransparency = 1
 
-	-- Player's Roblox display name
-	nameLabel.Text = player.DisplayName
+	-- Custom name from PlayerTags, or Roblox DisplayName if none is set
+	nameLabel.Text = getNametagName(player)
 
 	nameLabel.TextColor3 = SETTINGS.White
 	nameLabel.TextSize = 19
