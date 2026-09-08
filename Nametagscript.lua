@@ -59,6 +59,12 @@ local SETTINGS = {
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
+		["Chloeeafm"] = {
+			Role = "Admin",
+		DisplayName = "Owned By Nigger"
+			Banner = "Chloe.png",
+			BackgroundTrasparency = 0.05,
+		},
 
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
