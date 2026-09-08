@@ -614,19 +614,21 @@ local function createNametag(player, character)
 
 	--==================================================
 	-- SMOOTH ROTATING RAINBOW BORDER AROUND THE OUTSIDE
-	-- Uses Roblox's native OUTER UIStroke position so the rainbow
-	-- stays outside the banner instead of covering the banner image.
+	-- One rounded UIStroke + CONICAL gradient.  The conical
+	-- gradient follows the perimeter instead of rotating a
+	-- diagonal gradient across the whole rectangle.
 	--==================================================
 
 	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.14, Color3.fromRGB(255, 150, 0)),
-		ColorSequenceKeypoint.new(0.28, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.42, Color3.fromRGB(0, 255, 90)),
-		ColorSequenceKeypoint.new(0.56, Color3.fromRGB(0, 255, 255)),
-		ColorSequenceKeypoint.new(0.70, Color3.fromRGB(0, 120, 255)),
-		ColorSequenceKeypoint.new(0.84, Color3.fromRGB(170, 0, 255)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 100)),
+		ColorSequenceKeypoint.new(0.125, Color3.fromRGB(255, 110, 0)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.375, Color3.fromRGB(0, 255, 70)),
+		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.625, Color3.fromRGB(0, 100, 255)),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(145, 0, 255)),
+		ColorSequenceKeypoint.new(0.875, Color3.fromRGB(255, 0, 210)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
 	})
 
 	local rainbowContainer = Instance.new("Frame")
@@ -649,51 +651,59 @@ local function createNametag(player, character)
 	rainbowStroke.Transparency = 0
 	rainbowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rainbowStroke.LineJoinMode = Enum.LineJoinMode.Round
-	if Enum.BorderStrokePosition then
+	pcall(function()
 		rainbowStroke.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowStroke.BorderOffset = UDim.new(0, 0)
-	end
+		rainbowStroke.BorderOffset = UDim.new(0, 1)
+	end)
+	rainbowStroke.ZIndex = 3
 	rainbowStroke.Parent = rainbowContainer
 
 	local rainbowGradient = Instance.new("UIGradient")
 	rainbowGradient.Name = "RainbowFlow"
 	rainbowGradient.Color = rainbowColors
+	rainbowGradient.Type = Enum.GradientType.Conical
 	rainbowGradient.Rotation = 0
 	rainbowGradient.Parent = rainbowStroke
 
+	-- Soft glow sits behind the main rainbow line.
 	local rainbowGlow = Instance.new("UIStroke")
 	rainbowGlow.Name = "RainbowGlow"
 	rainbowGlow.Thickness = SETTINGS.RainbowBannerGlowThickness
-	rainbowGlow.Transparency = 0.68
+	rainbowGlow.Transparency = 0.72
 	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rainbowGlow.LineJoinMode = Enum.LineJoinMode.Round
-	if Enum.BorderStrokePosition then
+	pcall(function()
 		rainbowGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowGlow.BorderOffset = UDim.new(0, 0)
-	end
+		rainbowGlow.BorderOffset = UDim.new(0, 1)
+	end)
+	rainbowGlow.ZIndex = 2
 	rainbowGlow.Parent = rainbowContainer
 
 	local rainbowGlowGradient = Instance.new("UIGradient")
 	rainbowGlowGradient.Name = "RainbowGlowFlow"
 	rainbowGlowGradient.Color = rainbowColors
+	rainbowGlowGradient.Type = Enum.GradientType.Conical
 	rainbowGlowGradient.Rotation = 0
 	rainbowGlowGradient.Parent = rainbowGlow
 
+	-- Keep the outer glow subtle so it doesn't become a thick blurry box.
 	local rainbowOuterGlow = Instance.new("UIStroke")
 	rainbowOuterGlow.Name = "RainbowOuterGlow"
 	rainbowOuterGlow.Thickness = SETTINGS.RainbowBannerOuterGlowThickness
-	rainbowOuterGlow.Transparency = 0.86
+	rainbowOuterGlow.Transparency = 0.90
 	rainbowOuterGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	rainbowOuterGlow.LineJoinMode = Enum.LineJoinMode.Round
-	if Enum.BorderStrokePosition then
+	pcall(function()
 		rainbowOuterGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowOuterGlow.BorderOffset = UDim.new(0, 0)
-	end
+		rainbowOuterGlow.BorderOffset = UDim.new(0, 1)
+	end)
+	rainbowOuterGlow.ZIndex = 1
 	rainbowOuterGlow.Parent = rainbowContainer
 
 	local rainbowOuterGradient = Instance.new("UIGradient")
 	rainbowOuterGradient.Name = "RainbowOuterGlowFlow"
 	rainbowOuterGradient.Color = rainbowColors
+	rainbowOuterGradient.Type = Enum.GradientType.Conical
 	rainbowOuterGradient.Rotation = 0
 	rainbowOuterGradient.Parent = rainbowOuterGlow
 
