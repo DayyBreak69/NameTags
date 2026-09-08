@@ -18,7 +18,7 @@ local SETTINGS = {
 	-- Roles
 	-- Change usernames here
 	Roles = {
-		["YourUsername"] = "OWNER",
+		["DayyBreak66"] = "OWNER",
 	},
 
 	-- Colors
