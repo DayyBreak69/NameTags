@@ -137,7 +137,7 @@ local SETTINGS = {
 
 	-- OWNER RAINBOW NAME
 	OwnerRainbowNameEnabled = true,
-	OwnerRainbowNameSpeed = 1.2,
+	OwnerRainbowNameSpeed = 45,
 
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
@@ -906,7 +906,10 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(0.92, Color3.fromRGB(180, 0, 255)),
 		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 180)),
 	})
-	ownerNameGradient.Offset = Vector2.new(-1, 0)
+	-- Keep the gradient on the actual text. Rotation is used instead of
+	-- Offset so the full rainbow remains visible while it continuously moves.
+	ownerNameGradient.Rotation = 0
+	ownerNameGradient.Offset = Vector2.new(0, 0)
 	ownerNameGradient.Enabled = (getRole(player) == "OWNER") and SETTINGS.OwnerRainbowNameEnabled
 	ownerNameGradient.Parent = nameLabel
 
@@ -1259,8 +1262,8 @@ local function createNametag(player, character)
 		if ownerNameGradient then
 			if getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled then
 				ownerNameGradient.Enabled = true
-				local rainbowOffset = ((time * SETTINGS.OwnerRainbowNameSpeed) % 2) - 1
-				ownerNameGradient.Offset = Vector2.new(rainbowOffset, 0)
+				-- Rotate the rainbow through the letters continuously.
+				ownerNameGradient.Rotation = (time * SETTINGS.OwnerRainbowNameSpeed) % 360
 			else
 				ownerNameGradient.Enabled = false
 			end
@@ -1537,4 +1540,3 @@ end
 Players.PlayerAdded:Connect(function(player)
 	setupPlayer(player)
 end)
-
