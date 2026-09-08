@@ -137,10 +137,10 @@ local SETTINGS = {
 
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
-	RainbowBannerSpeed = 85, -- smooth rotation speed
-	RainbowBannerThickness = 4,
-	RainbowBannerGlowThickness = 8,
-	RainbowBannerOuterGlowThickness = 12,
+	RainbowBannerSpeed = 70, -- smooth continuous movement
+	RainbowBannerThickness = 3,
+	RainbowBannerGlowThickness = 6,
+	RainbowBannerOuterGlowThickness = 10,
 
 	-- Floating
 	FloatingEnabled = true,
@@ -614,72 +614,90 @@ local function createNametag(player, character)
 
 	--==================================================
 	-- SMOOTH ROTATING RAINBOW BORDER AROUND THE OUTSIDE
-	-- Single rounded strokes give the corners a continuous, smooth curve.
-	-- UIGradient is attached to each stroke and rotated continuously.
+	-- Uses Roblox's native OUTER UIStroke position so the rainbow
+	-- stays outside the banner instead of covering the banner image.
 	--==================================================
 
 	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.12, Color3.fromRGB(255, 120, 0)),
-		ColorSequenceKeypoint.new(0.24, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(0, 255, 80)),
-		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 255)),
-		ColorSequenceKeypoint.new(0.60, Color3.fromRGB(0, 110, 255)),
-		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(150, 0, 255)),
-		ColorSequenceKeypoint.new(0.84, Color3.fromRGB(255, 0, 220)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.14, Color3.fromRGB(255, 150, 0)),
+		ColorSequenceKeypoint.new(0.28, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.42, Color3.fromRGB(0, 255, 90)),
+		ColorSequenceKeypoint.new(0.56, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.70, Color3.fromRGB(0, 120, 255)),
+		ColorSequenceKeypoint.new(0.84, Color3.fromRGB(170, 0, 255)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 100)),
 	})
 
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
-	rainbowContainer.Size = UDim2.new(1, 12, 1, 12)
-	rainbowContainer.Position = UDim2.fromOffset(-6, -6)
+	rainbowContainer.Size = UDim2.fromScale(1, 1)
+	rainbowContainer.Position = UDim2.fromScale(0, 0)
 	rainbowContainer.ClipsDescendants = false
-	rainbowContainer.ZIndex = 30
+	rainbowContainer.ZIndex = 50
 	rainbowContainer.Parent = billboard
 
-	local rainbowLayers = {}
+	local rainbowCorner = Instance.new("UICorner")
+	rainbowCorner.CornerRadius = UDim.new(0, 22)
+	rainbowCorner.Parent = rainbowContainer
 
-	local function makeRainbowStroke(name, thickness, transparency, zIndex)
-		local frame = Instance.new("Frame")
-		frame.Name = name
-		frame.Size = UDim2.new(1, 0, 1, 0)
-		frame.Position = UDim2.fromScale(0, 0)
-		frame.BackgroundTransparency = 1
-		frame.BorderSizePixel = 0
-		frame.ZIndex = zIndex
-		frame.Parent = rainbowContainer
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 18)
-		corner.Parent = frame
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Name = "RainbowStroke"
-		stroke.Thickness = thickness
-		stroke.Transparency = transparency
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Parent = frame
-
-		local gradient = Instance.new("UIGradient")
-		gradient.Name = "RainbowFlow"
-		gradient.Color = rainbowColors
-		gradient.Rotation = 0
-		gradient.Parent = stroke
-
-		table.insert(rainbowLayers, {frame = frame, stroke = stroke, gradient = gradient})
+	local rainbowStroke = Instance.new("UIStroke")
+	rainbowStroke.Name = "RainbowOuterStroke"
+	rainbowStroke.Thickness = SETTINGS.RainbowBannerThickness
+	rainbowStroke.Transparency = 0
+	rainbowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowStroke.LineJoinMode = Enum.LineJoinMode.Round
+	if Enum.BorderStrokePosition then
+		rainbowStroke.BorderStrokePosition = Enum.BorderStrokePosition.Outer
+		rainbowStroke.BorderOffset = UDim.new(0, 0)
 	end
+	rainbowStroke.Parent = rainbowContainer
 
-	-- Thin, bright main line with subtle outer glow.
-	makeRainbowStroke("RainbowMain", SETTINGS.RainbowBannerThickness, 0.02, 31)
-	makeRainbowStroke("RainbowGlow", SETTINGS.RainbowBannerGlowThickness, 0.52, 30)
-	makeRainbowStroke("RainbowOuterGlow", SETTINGS.RainbowBannerOuterGlowThickness, 0.78, 29)
+	local rainbowGradient = Instance.new("UIGradient")
+	rainbowGradient.Name = "RainbowFlow"
+	rainbowGradient.Color = rainbowColors
+	rainbowGradient.Rotation = 0
+	rainbowGradient.Parent = rainbowStroke
 
-	for _, layer in ipairs(rainbowLayers) do
-		layer.frame.Visible = SETTINGS.RainbowBannerEnabled
+	local rainbowGlow = Instance.new("UIStroke")
+	rainbowGlow.Name = "RainbowGlow"
+	rainbowGlow.Thickness = SETTINGS.RainbowBannerGlowThickness
+	rainbowGlow.Transparency = 0.68
+	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowGlow.LineJoinMode = Enum.LineJoinMode.Round
+	if Enum.BorderStrokePosition then
+		rainbowGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
+		rainbowGlow.BorderOffset = UDim.new(0, 0)
 	end
+	rainbowGlow.Parent = rainbowContainer
+
+	local rainbowGlowGradient = Instance.new("UIGradient")
+	rainbowGlowGradient.Name = "RainbowGlowFlow"
+	rainbowGlowGradient.Color = rainbowColors
+	rainbowGlowGradient.Rotation = 0
+	rainbowGlowGradient.Parent = rainbowGlow
+
+	local rainbowOuterGlow = Instance.new("UIStroke")
+	rainbowOuterGlow.Name = "RainbowOuterGlow"
+	rainbowOuterGlow.Thickness = SETTINGS.RainbowBannerOuterGlowThickness
+	rainbowOuterGlow.Transparency = 0.86
+	rainbowOuterGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowOuterGlow.LineJoinMode = Enum.LineJoinMode.Round
+	if Enum.BorderStrokePosition then
+		rainbowOuterGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
+		rainbowOuterGlow.BorderOffset = UDim.new(0, 0)
+	end
+	rainbowOuterGlow.Parent = rainbowContainer
+
+	local rainbowOuterGradient = Instance.new("UIGradient")
+	rainbowOuterGradient.Name = "RainbowOuterGlowFlow"
+	rainbowOuterGradient.Color = rainbowColors
+	rainbowOuterGradient.Rotation = 0
+	rainbowOuterGradient.Parent = rainbowOuterGlow
+
+	rainbowContainer.Visible = SETTINGS.RainbowBannerEnabled
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1111,15 +1129,12 @@ local function createNametag(player, character)
 
 		if SETTINGS.RainbowBannerEnabled then
 			local rotation = (time * SETTINGS.RainbowBannerSpeed) % 360
-
-			for _, layer in ipairs(rainbowLayers) do
-				layer.gradient.Rotation = rotation
-				layer.frame.Visible = true
-			end
+			rainbowContainer.Visible = true
+			rainbowGradient.Rotation = rotation
+			rainbowGlowGradient.Rotation = rotation
+			rainbowOuterGradient.Rotation = rotation
 		else
-			for _, layer in ipairs(rainbowLayers) do
-				layer.frame.Visible = false
-			end
+			rainbowContainer.Visible = false
 		end
 
 		--==================================================
