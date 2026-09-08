@@ -139,6 +139,9 @@ local SETTINGS = {
 	OwnerRainbowNameEnabled = true,
 	OwnerRainbowNameSpeed = 45,
 
+	-- CLICKABLE FRIEND TAGS
+	ClickableFriendTagsEnabled = true,
+
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
 	RainbowBannerSpeed = 70, -- smooth continuous movement
@@ -437,6 +440,39 @@ local function getTagConfig(player)
 	return SETTINGS.PlayerTags[player.UserId]
 		or SETTINGS.PlayerTags[player.Name]
 		or {}
+end
+
+local function isClickableFriend(player)
+	-- Only configured non-local players are treated as clickable friends.
+	-- Your own nametag is never clickable.
+	if player == localPlayer then
+		return false
+	end
+
+	return SETTINGS.ClickableFriendTagsEnabled
+		and (SETTINGS.PlayerTags[player.UserId] ~= nil
+			or SETTINGS.PlayerTags[player.Name] ~= nil)
+end
+
+local function teleportToPlayerInstantly(targetPlayer)
+	if not targetPlayer or targetPlayer == localPlayer then
+		return
+	end
+
+	local myCharacter = localPlayer.Character
+	local targetCharacter = targetPlayer.Character
+
+	if not myCharacter or not targetCharacter then
+		return
+	end
+
+	local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+	if not targetRoot then
+		return
+	end
+
+	-- Option A: instant teleport directly to their exact position.
+	myCharacter:PivotTo(targetRoot.CFrame)
 end
 
 --==================================================
@@ -958,6 +994,30 @@ local function createNametag(player, character)
 	highlightCorner.Parent = highlight
 
 	--==================================================
+	-- CLICKABLE FRIEND TAG
+	--==================================================
+	-- Invisible button over the full nametag.
+	-- Your own tag is excluded by isClickableFriend().
+	if isClickableFriend(player) then
+		local friendClickButton = Instance.new("TextButton")
+		friendClickButton.Name = "FriendTeleportButton"
+		friendClickButton.Size = UDim2.fromScale(1, 1)
+		friendClickButton.Position = UDim2.fromScale(0, 0)
+		friendClickButton.BackgroundTransparency = 1
+		friendClickButton.BorderSizePixel = 0
+		friendClickButton.Text = ""
+		friendClickButton.AutoButtonColor = false
+		friendClickButton.Active = true
+		friendClickButton.Selectable = false
+		friendClickButton.ZIndex = 100
+		friendClickButton.Parent = billboard
+
+		friendClickButton.MouseButton1Click:Connect(function()
+			teleportToPlayerInstantly(player)
+		end)
+	end
+
+	--==================================================
 	-- CIRCLE-ONLY BILLBOARD
 	--==================================================
 
@@ -978,6 +1038,26 @@ local function createNametag(player, character)
 	logoBillboard.ResetOnSpawn = false
 	logoBillboard.Enabled = false
 	logoBillboard.Parent = character
+
+	-- Make the distant circular tag clickable too.
+	if isClickableFriend(player) then
+		local distantClickButton = Instance.new("TextButton")
+		distantClickButton.Name = "FriendTeleportButton"
+		distantClickButton.Size = UDim2.fromScale(1, 1)
+		distantClickButton.Position = UDim2.fromScale(0, 0)
+		distantClickButton.BackgroundTransparency = 1
+		distantClickButton.BorderSizePixel = 0
+		distantClickButton.Text = ""
+		distantClickButton.AutoButtonColor = false
+		distantClickButton.Active = true
+		distantClickButton.Selectable = false
+		distantClickButton.ZIndex = 100
+		distantClickButton.Parent = logoBillboard
+
+		distantClickButton.MouseButton1Click:Connect(function()
+			teleportToPlayerInstantly(player)
+		end)
+	end
 
 	--==================================================
 	-- LOGO CIRCLE
