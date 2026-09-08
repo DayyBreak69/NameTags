@@ -1000,10 +1000,13 @@ local function createNametag(player, character)
 		return obj
 	end
 
-	local function addOverlayGradient(obj, sequence, rotation)
+	local function addOverlayGradient(obj, sequence, rotation, transparencySequence)
 		local g = Instance.new("UIGradient")
 		g.Color = sequence
 		g.Rotation = rotation or 0
+		if transparencySequence then
+			g.Transparency = transparencySequence
+		end
 		g.Parent = obj
 		return g
 	end
@@ -1048,22 +1051,35 @@ local function createNametag(player, character)
 
 	local function makeSweep(name, width, seq, transparency, rotation)
 		local f = addOverlay(name)
-		f.Size = UDim2.fromOffset(width, SETTINGS.Height + 30)
-		f.Position = UDim2.fromScale(-0.4, -0.2)
-		f.BackgroundTransparency = transparency
-		f.Rotation = rotation or 0
-		addOverlayGradient(f, seq, 0)
+		-- Keep the sweep completely inside the banner. Rotating a large Frame
+		-- was causing the rectangular "chrome swipe" to spill outside the tag.
+		f.Size = UDim2.new(0, width, 1, 0)
+		f.Position = UDim2.new(0, -width, 0, 0)
+		f.BackgroundTransparency = 1
+		f.Rotation = 0
+		addOverlayGradient(
+			f,
+			seq,
+			0,
+			ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, 1),
+				ColorSequenceKeypoint.new(0.25, 0.35),
+				ColorSequenceKeypoint.new(0.50, 0),
+				ColorSequenceKeypoint.new(0.75, 0.35),
+				ColorSequenceKeypoint.new(1.00, 1),
+			})
+		)
 		return f
 	end
 
 	if overlayType == "ChromeSweep" then
-		sweep = makeSweep("Sweep", 85, chromeSequence, 0.25, 12)
+		sweep = makeSweep("Sweep", 42, chromeSequence, 1, 0)
 	elseif overlayType == "GlassSweep" then
-		sweep = makeSweep("Sweep", 65, ColorSequence.new(
+		sweep = makeSweep("Sweep", 34, ColorSequence.new(
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
 			ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(180,210,255))
-		), 0.65, 10)
+		), 1, 0)
 	elseif overlayType == "Holographic" or overlayType == "Iridescent" then
 		local f = addOverlay("ColorWash")
 		f.Size = UDim2.fromScale(1,1)
@@ -1080,7 +1096,7 @@ local function createNametag(player, character)
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190))
 		), 0)
 	elseif overlayType == "DiamondShine" or overlayType == "Gloss" then
-		sweep = makeSweep("Sweep", overlayType == "DiamondShine" and 22 or 38, whiteSequence, 0.35, 12)
+		sweep = makeSweep("Sweep", overlayType == "DiamondShine" and 20 or 30, whiteSequence, 1, 0)
 	elseif overlayType == "MetallicFlow" then
 		local f = addOverlay("Metallic")
 		f.Size = UDim2.fromScale(1,1)
@@ -1131,7 +1147,7 @@ local function createNametag(player, character)
 		f.BackgroundTransparency = 0.58
 		addOverlayGradient(f, palettes[overlayType], 0)
 	elseif overlayType == "EnergyPulse" then
-		sweep = makeSweep("Sweep", 70, whiteSequence, 0.40, 10)
+		sweep = makeSweep("Sweep", 42, whiteSequence, 1, 0)
 	elseif overlayType == "Scanline" then
 		scan = addOverlay("Scanline")
 		scan.Size = UDim2.new(1,0,0,2)
@@ -1913,7 +1929,7 @@ local function createNametag(player, character)
 
 
 		--==================================================
-		-- BANNER OVERLAY ANIMATION
+		-- BANNER OVERLAY ANIMATION (SAFE NON-ROTATING SWEEP)
 		--==================================================
 
 		if overlayFolder and overlayFolder.Parent then
@@ -1925,12 +1941,17 @@ local function createNametag(player, character)
 				for _, obj in ipairs(overlayObjects) do
 					local g = obj:FindFirstChildOfClass("UIGradient")
 					if g then
-						g.Rotation = (ot * 35) % 360
+						-- Sweeps move horizontally; their gradient stays horizontal.
+						if obj ~= sweep and obj ~= scan and obj ~= laser then
+							g.Rotation = (ot * 35) % 360
+						else
+							g.Rotation = 0
+						end
 					end
 				end
 
 				if sweep then
-					sweep.Position = UDim2.fromScale(-0.45 + ((ot * 0.22) % 1.5), -0.2)
+					sweep.Position = UDim2.new(-0.18 + ((ot * 0.30) % 1.36), 0, 0, 0)
 				end
 				if scan then
 					scan.Position = UDim2.fromScale(0, -0.1 + ((ot * 0.55) % 1.2))
