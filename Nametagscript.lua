@@ -315,7 +315,7 @@ end
 -- GITHUB CUSTOM LOGOS
 --==================================================
 local LOGO_BASE_URL =
-	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/logos/"
+	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/Logos/"
 
 local LOGO_FOLDER = "DayBreak/Logos"
 local LOGO_SESSION = tostring(math.floor(os.clock() * 1000000))
