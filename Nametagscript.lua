@@ -657,7 +657,7 @@ local function createNametag(player, character)
 	customLogo.Size = UDim2.new(1, -8, 1, -8)
 	customLogo.Position = UDim2.fromOffset(4, 4)
 	customLogo.Image = customLogoAsset or ""
-	customLogo.ScaleType = Enum.ScaleType.Crop
+	customLogo.ScaleType = Enum.ScaleType.Fit
 	customLogo.ImageColor3 = SETTINGS.White
 	customLogo.ZIndex = 3
 	customLogo.Visible = customLogoAsset ~= nil
@@ -808,7 +808,7 @@ local function createNametag(player, character)
 	customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
 	customLogoDistant.Position = UDim2.fromOffset(4, 4)
 	customLogoDistant.Image = customLogoAsset or ""
-	customLogoDistant.ScaleType = Enum.ScaleType.Crop
+	customLogoDistant.ScaleType = Enum.ScaleType.Fit
 	customLogoDistant.ImageColor3 = SETTINGS.White
 	customLogoDistant.ZIndex = 2
 	customLogoDistant.Visible = customLogoAsset ~= nil
