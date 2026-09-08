@@ -613,23 +613,11 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
-	-- SMOOTH ROTATING RAINBOW BORDER AROUND THE OUTSIDE
-	-- One rounded UIStroke + CONICAL gradient.  The conical
-	-- gradient follows the perimeter instead of rotating a
-	-- diagonal gradient across the whole rectangle.
+	-- PROCEDURAL RAINBOW BORDER AROUND THE OUTSIDE
+	-- Uses small rounded segments instead of UIGradient-on-UIStroke.
+	-- This is intentionally more compatible with clients/executors that
+	-- do not render gradient strokes correctly.
 	--==================================================
-
-	local rainbowColors = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.125, Color3.fromRGB(255, 110, 0)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.375, Color3.fromRGB(0, 255, 70)),
-		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
-		ColorSequenceKeypoint.new(0.625, Color3.fromRGB(0, 100, 255)),
-		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(145, 0, 255)),
-		ColorSequenceKeypoint.new(0.875, Color3.fromRGB(255, 0, 210)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
-	})
 
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
@@ -641,73 +629,114 @@ local function createNametag(player, character)
 	rainbowContainer.ZIndex = 50
 	rainbowContainer.Parent = billboard
 
-	local rainbowCorner = Instance.new("UICorner")
-	rainbowCorner.CornerRadius = UDim.new(0, 22)
-	rainbowCorner.Parent = rainbowContainer
+	local rainbowSegments = {}
+	local RAINBOW_SEGMENT_COUNT = 61
+	local RAINBOW_THICKNESS = SETTINGS.RainbowBannerThickness
+	local RAINBOW_RADIUS = 20
 
-	local rainbowStroke = Instance.new("UIStroke")
-	rainbowStroke.Name = "RainbowOuterStroke"
-	rainbowStroke.Thickness = SETTINGS.RainbowBannerThickness
-	rainbowStroke.Transparency = 0
-	rainbowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowStroke.LineJoinMode = Enum.LineJoinMode.Round
-	pcall(function()
-		rainbowStroke.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowStroke.BorderOffset = UDim.new(0, 1)
-	end)
-	rainbowStroke.ZIndex = 3
-	rainbowStroke.Parent = rainbowContainer
+	for i = 1, RAINBOW_SEGMENT_COUNT do
+		local segment = Instance.new("Frame")
+		segment.Name = "RainbowSegment" .. i
+		segment.BackgroundColor3 = Color3.fromHSV((i - 1) / RAINBOW_SEGMENT_COUNT, 1, 1)
+		segment.BorderSizePixel = 0
+		segment.AnchorPoint = Vector2.new(0.5, 0.5)
+		segment.ZIndex = 50
+		segment.Parent = rainbowContainer
 
-	local rainbowGradient = Instance.new("UIGradient")
-	rainbowGradient.Name = "RainbowFlow"
-	rainbowGradient.Color = rainbowColors
-	rainbowGradient.Type = Enum.GradientType.Conical
-	rainbowGradient.Rotation = 0
-	rainbowGradient.Parent = rainbowStroke
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(1, 0)
+		corner.Parent = segment
 
-	-- Soft glow sits behind the main rainbow line.
-	local rainbowGlow = Instance.new("UIStroke")
-	rainbowGlow.Name = "RainbowGlow"
-	rainbowGlow.Thickness = SETTINGS.RainbowBannerGlowThickness
-	rainbowGlow.Transparency = 0.72
-	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowGlow.LineJoinMode = Enum.LineJoinMode.Round
-	pcall(function()
-		rainbowGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowGlow.BorderOffset = UDim.new(0, 1)
-	end)
-	rainbowGlow.ZIndex = 2
-	rainbowGlow.Parent = rainbowContainer
+		local glow = Instance.new("UIStroke")
+		glow.Name = "SoftGlow"
+		glow.Thickness = 2
+		glow.Transparency = 0.70
+		glow.Color = segment.BackgroundColor3
+		glow.ZIndex = 49
+		glow.Parent = segment
 
-	local rainbowGlowGradient = Instance.new("UIGradient")
-	rainbowGlowGradient.Name = "RainbowGlowFlow"
-	rainbowGlowGradient.Color = rainbowColors
-	rainbowGlowGradient.Type = Enum.GradientType.Conical
-	rainbowGlowGradient.Rotation = 0
-	rainbowGlowGradient.Parent = rainbowGlow
+		table.insert(rainbowSegments, {frame = segment, glow = glow})
+	end
 
-	-- Keep the outer glow subtle so it doesn't become a thick blurry box.
-	local rainbowOuterGlow = Instance.new("UIStroke")
-	rainbowOuterGlow.Name = "RainbowOuterGlow"
-	rainbowOuterGlow.Thickness = SETTINGS.RainbowBannerOuterGlowThickness
-	rainbowOuterGlow.Transparency = 0.90
-	rainbowOuterGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowOuterGlow.LineJoinMode = Enum.LineJoinMode.Round
-	pcall(function()
-		rainbowOuterGlow.BorderStrokePosition = Enum.BorderStrokePosition.Outer
-		rainbowOuterGlow.BorderOffset = UDim.new(0, 1)
-	end)
-	rainbowOuterGlow.ZIndex = 1
-	rainbowOuterGlow.Parent = rainbowContainer
+	local rainbowLastWidth = 0
+	local rainbowLastHeight = 0
 
-	local rainbowOuterGradient = Instance.new("UIGradient")
-	rainbowOuterGradient.Name = "RainbowOuterGlowFlow"
-	rainbowOuterGradient.Color = rainbowColors
-	rainbowOuterGradient.Type = Enum.GradientType.Conical
-	rainbowOuterGradient.Rotation = 0
-	rainbowOuterGradient.Parent = rainbowOuterGlow
+	local function buildRainbowBorder()
+		local size = rainbowContainer.AbsoluteSize
+		local w, h = size.X, size.Y
+		if w <= 1 or h <= 1 then
+			return
+		end
 
-	rainbowContainer.Visible = SETTINGS.RainbowBannerEnabled
+		if math.abs(w - rainbowLastWidth) < 0.5 and math.abs(h - rainbowLastHeight) < 0.5 then
+			return
+		end
+		rainbowLastWidth = w
+		rainbowLastHeight = h
+
+		local radius = math.min(RAINBOW_RADIUS, (h * 0.5) - 1, (w * 0.5) - 1)
+		local points = {}
+
+		local function addPoint(x, y)
+			table.insert(points, Vector2.new(x, y))
+		end
+
+		-- Top edge
+		for i = 0, 7 do
+			local t = i / 7
+			addPoint(radius + (w - 2 * radius) * t, 0)
+		end
+		-- Top-right corner
+		for i = 1, 8 do
+			local a = -math.pi / 2 + (math.pi / 2) * (i / 8)
+			addPoint(w - radius + math.cos(a) * radius, radius + math.sin(a) * radius)
+		end
+		-- Right edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(w, radius + (h - 2 * radius) * t)
+		end
+		-- Bottom-right corner
+		for i = 1, 8 do
+			local a = 0 + (math.pi / 2) * (i / 8)
+			addPoint(w - radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
+		end
+		-- Bottom edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(w - radius - (w - 2 * radius) * t, h)
+		end
+		-- Bottom-left corner
+		for i = 1, 8 do
+			local a = math.pi / 2 + (math.pi / 2) * (i / 8)
+			addPoint(radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
+		end
+		-- Left edge
+		for i = 1, 7 do
+			local t = i / 7
+			addPoint(0, h - radius - (h - 2 * radius) * t)
+		end
+		-- Top-left corner
+		for i = 1, 8 do
+			local a = math.pi + (math.pi / 2) * (i / 8)
+			addPoint(radius + math.cos(a) * radius, radius + math.sin(a) * radius)
+		end
+
+		for i, data in ipairs(rainbowSegments) do
+			local p1 = points[i]
+			local p2 = points[(i % #points) + 1]
+			if p1 and p2 then
+				local delta = p2 - p1
+				local length = delta.Magnitude + 2
+				local midpoint = (p1 + p2) * 0.5
+				data.frame.Position = UDim2.fromOffset(midpoint.X, midpoint.Y)
+				data.frame.Size = UDim2.fromOffset(length, RAINBOW_THICKNESS)
+				data.frame.Rotation = math.deg(math.atan2(delta.Y, delta.X))
+			end
+		end
+	end
+
+	buildRainbowBorder()
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1132,17 +1161,21 @@ local function createNametag(player, character)
 		end
 
 		--==================================================
-		-- SMOOTH CONTINUOUS RAINBOW BORDER ANIMATION
-		-- Rotating the gradient on one rounded stroke keeps the rainbow
-		-- perfectly smooth through all four corners.
+		-- CONTINUOUS RAINBOW BORDER ANIMATION
+		-- Each segment gets a smoothly moving HSV hue.
 		--==================================================
 
+		buildRainbowBorder()
+
 		if SETTINGS.RainbowBannerEnabled then
-			local rotation = (time * SETTINGS.RainbowBannerSpeed) % 360
 			rainbowContainer.Visible = true
-			rainbowGradient.Rotation = rotation
-			rainbowGlowGradient.Rotation = rotation
-			rainbowOuterGradient.Rotation = rotation
+			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
+			for i, data in ipairs(rainbowSegments) do
+				local hue = ((i - 1) / RAINBOW_SEGMENT_COUNT + hueOffset) % 1
+				local color = Color3.fromHSV(hue, 1, 1)
+				data.frame.BackgroundColor3 = color
+				data.glow.Color = color
+			end
 		else
 			rainbowContainer.Visible = false
 		end
