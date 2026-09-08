@@ -22,6 +22,31 @@ local SETTINGS = {
 		["DayyBreak66"] = "OWNER",
 	},
 
+	-- Player-specific tags
+	-- Use Roblox UserIds so tags stay tied to the correct person.
+	-- BackgroundFile is a local executor asset path.
+	PlayerTags = {
+		-- You can use a Roblox UserId (recommended):
+		-- [123456789] = {
+		--	Role = "OWNER",
+		--	BackgroundFile = "workspace/Test.png",
+		--	BackgroundTransparency = 0.05,
+		-- },
+
+		-- Or use a username for easier setup: 
+		["DayyBreak66"] = {
+			Role = "OWNER",
+			BackgroundFile = "workspace/Test.png",
+			BackgroundTransparency = 0.05,
+		},
+
+		-- ["FriendUsername"] = {
+		--	Role = "FRIEND",
+		--	BackgroundFile = "workspace/Friend.png",
+		--	BackgroundTransparency = 0.05,
+		-- },
+	},
+
 	-- Colors
 	Orange = Color3.fromRGB(255, 140, 30),
 	OrangeBright = Color3.fromRGB(255, 190, 70),
@@ -131,11 +156,47 @@ local function registryRequest(method, path, body)
 end
 
 --==================================================
+-- LOCAL CUSTOM ASSETS
+--==================================================
+
+local getAsset = getcustomasset or getsynasset
+local AssetCache = {}
+
+local function loadLocalAsset(path)
+	if not getAsset or not path or path == "" then
+		return nil
+	end
+
+	if AssetCache[path] then
+		return AssetCache[path]
+	end
+
+	local ok, asset = pcall(function()
+		return getAsset(path)
+	end)
+
+	if ok and asset then
+		AssetCache[path] = asset
+		return asset
+	end
+
+	warn("[DayBreak] Could not load local asset:", path)
+	return nil
+end
+
+local function getTagConfig(player)
+	return SETTINGS.PlayerTags[player.UserId]
+		or SETTINGS.PlayerTags[player.Name]
+		or {}
+end
+
+--==================================================
 -- ROLE
 --==================================================
 
 local function getRole(player)
-	return SETTINGS.Roles[player.Name] or SETTINGS.DefaultRole
+	local config = getTagConfig(player)
+	return config.Role or SETTINGS.Roles[player.Name] or SETTINGS.DefaultRole
 end
 
 --==================================================
@@ -250,6 +311,33 @@ local function createNametag(player, character)
 	panelCorner.Parent = panel
 
 	--==================================================
+	-- PLAYER-SPECIFIC BACKGROUND
+	--==================================================
+
+	local tagConfig = getTagConfig(player)
+	local backgroundImage
+
+	if tagConfig.BackgroundFile then
+		local asset = loadLocalAsset(tagConfig.BackgroundFile)
+		if asset then
+			backgroundImage = Instance.new("ImageLabel")
+			backgroundImage.Name = "CustomBackground"
+			backgroundImage.Size = UDim2.fromScale(1, 1)
+			backgroundImage.Position = UDim2.fromScale(0, 0)
+			backgroundImage.BackgroundTransparency = 1
+			backgroundImage.Image = asset
+			backgroundImage.ImageTransparency = tagConfig.BackgroundTransparency or 0
+			backgroundImage.ScaleType = Enum.ScaleType.Crop
+			backgroundImage.ZIndex = 0
+			backgroundImage.Parent = panel
+
+			local backgroundCorner = Instance.new("UICorner")
+			backgroundCorner.CornerRadius = UDim.new(0, 18)
+			backgroundCorner.Parent = backgroundImage
+		end
+	end
+
+	--==================================================
 	-- PANEL GLOW
 	--==================================================
 
@@ -268,6 +356,7 @@ local function createNametag(player, character)
 	starCircle.Position = UDim2.new(0, 8, 0.5, -29)
 	starCircle.BackgroundColor3 = SETTINGS.DarkInner
 	starCircle.BorderSizePixel = 0
+	starCircle.ZIndex = 1
 	starCircle.Parent = panel
 
 	local circleCorner = Instance.new("UICorner")
