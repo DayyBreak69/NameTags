@@ -147,8 +147,8 @@ local SETTINGS = {
 	LogoEffectsSpeed = 1,
 	LogoEffects = {
 		"Pulse",
+		"Rotation",
 		-- "GlowPulse",
-		-- "Rotation",
 		-- "CounterRotation",
 		-- "ShineSweep",
 		-- "ChromeSweep",
@@ -1051,29 +1051,71 @@ local function createNametag(player, character)
 
 	local function makeSweep(name, width, seq, transparency, rotation)
 		local f = addOverlay(name)
-		-- Keep the sweep completely inside the banner. Rotating a large Frame
-		-- was causing the rectangular "chrome swipe" to spill outside the tag.
+		-- IMPORTANT: the sweep is a plain, NON-ROTATED vertical beam.
+		-- Using a rotated Frame here can render as a large quadrilateral
+		-- outside the BillboardGui on some Roblox/executor UI renderers.
 		f.Size = UDim2.new(0, width, 1, 0)
 		f.Position = UDim2.new(0, -width, 0, 0)
-		f.BackgroundTransparency = 1
+		f.BackgroundColor3 = Color3.fromRGB(235, 235, 240)
+		f.BackgroundTransparency = 0.78
 		f.Rotation = 0
-		addOverlayGradient(
-			f,
-			seq,
-			0,
-			ColorSequence.new({
-				ColorSequenceKeypoint.new(0.00, 1),
-				ColorSequenceKeypoint.new(0.25, 0.35),
-				ColorSequenceKeypoint.new(0.50, 0),
-				ColorSequenceKeypoint.new(0.75, 0.35),
-				ColorSequenceKeypoint.new(1.00, 1),
-			})
-		)
+		f.ClipsDescendants = true
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(1, 0)
+		corner.Parent = f
+
+		-- Soft chrome halo.
+		local halo = Instance.new("Frame")
+		halo.Name = "Halo"
+		halo.Size = UDim2.new(1, 10, 1, 0)
+		halo.Position = UDim2.new(0, -5, 0, 0)
+		halo.BackgroundColor3 = Color3.fromRGB(255, 180, 75)
+		halo.BackgroundTransparency = 0.90
+		halo.BorderSizePixel = 0
+		halo.ZIndex = f.ZIndex
+		halo.Parent = f
+
+		local haloCorner = Instance.new("UICorner")
+		haloCorner.CornerRadius = UDim.new(1, 0)
+		haloCorner.Parent = halo
+
+		-- Bright white chrome core.
+		local core = Instance.new("Frame")
+		core.Name = "Core"
+		core.Size = UDim2.new(0, 8, 1, 0)
+		core.Position = UDim2.new(0.5, -4, 0, 0)
+		core.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		core.BackgroundTransparency = 0.12
+		core.BorderSizePixel = 0
+		core.ZIndex = f.ZIndex + 1
+		core.Parent = f
+
+		local coreCorner = Instance.new("UICorner")
+		coreCorner.CornerRadius = UDim.new(1, 0)
+		coreCorner.Parent = core
+
+		-- Small warm edge so the reflection matches the orange/chrome theme.
+		local edge = Instance.new("Frame")
+		edge.Name = "OrangeEdge"
+		edge.Size = UDim2.new(0, 3, 0.82, 0)
+		edge.Position = UDim2.new(0.5, 5, 0.09, 0)
+		edge.BackgroundColor3 = Color3.fromRGB(255, 170, 60)
+		edge.BackgroundTransparency = 0.18
+		edge.BorderSizePixel = 0
+		edge.ZIndex = f.ZIndex + 1
+		edge.Parent = f
+
+		local edgeCorner = Instance.new("UICorner")
+		edgeCorner.CornerRadius = UDim.new(1, 0)
+		edgeCorner.Parent = edge
+
 		return f
 	end
 
 	if overlayType == "ChromeSweep" then
-		sweep = makeSweep("Sweep", 42, chromeSequence, 1, 0)
+		-- ChromeSweep deliberately uses the safe solid-beam implementation above.
+		sweep = makeSweep("Sweep", 26, chromeSequence, 1, 0)
 	elseif overlayType == "GlassSweep" then
 		sweep = makeSweep("Sweep", 34, ColorSequence.new(
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
@@ -1550,10 +1592,13 @@ local function createNametag(player, character)
 
 	if logoFxOn("ShineSweep") or logoFxOn("ChromeSweep") then
 		fxSweep=fxFrame("Sweep",8)
-		fxSweep.Size=UDim2.new(0,16,1.3,0)
-		fxSweep.Position=UDim2.fromScale(-0.3,-0.15)
-		fxSweep.Rotation=12
-		fxSweep.BackgroundTransparency=0.35
+		-- Safe logo reflection: never rotate the Frame itself.
+		-- A rotated rectangular Frame was the source of the giant gray plane.
+		fxSweep.Size=UDim2.new(0,8,1,0)
+		fxSweep.Position=UDim2.fromScale(-0.15,0)
+		fxSweep.Rotation=0
+		fxSweep.BackgroundTransparency=0.72
+		fxSweep.ClipsDescendants=true
 		local g=Instance.new("UIGradient")
 		g.Color=logoFxOn("ChromeSweep") and ColorSequence.new(
 			ColorSequenceKeypoint.new(0,Color3.fromRGB(80,80,90)),
@@ -1951,7 +1996,8 @@ local function createNametag(player, character)
 				end
 
 				if sweep then
-					sweep.Position = UDim2.new(-0.18 + ((ot * 0.30) % 1.36), 0, 0, 0)
+					local sweepProgress = (ot * 0.30) % 1.30
+					sweep.Position = UDim2.new(-0.10 + sweepProgress, 0, 0, 0)
 				end
 				if scan then
 					scan.Position = UDim2.fromScale(0, -0.1 + ((ot * 0.55) % 1.2))
