@@ -37,21 +37,21 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			DisplayName = "DayBreak",
+			DisplayName = "DayDay",
 			Banner = "Daybreak.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-			DisplayName = "Haylee",
+			DisplayName = "Day's Bitch",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
 
 		["Chloeeafm"] = {
 			Role = "Admin",
-			DisplayName = "Owned By Chloe",
-			Banner = "Chloe.png",
+			DisplayName = "Owned By Nigger",
+			Banner = "Chloe123.png",
 			BackgroundTransparency = 0.05,
 		},
 
