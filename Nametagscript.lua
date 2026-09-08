@@ -39,6 +39,19 @@ local SETTINGS = {
 			Role = "OWNER",
 			DisplayName = "DayBreak",
 			Banner = "Daybreak.png",
+
+			Logo = "DaybreakLogo.png",
+
+			Overlay = {
+				Enabled = true,
+				Type = "ChromeSweep",
+				Speed = 1.2,
+				Glow = true,
+				GlowStrength = 2,
+				Rotation = 0,
+				Pulse = true,
+			},
+
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
