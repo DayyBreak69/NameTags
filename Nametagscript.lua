@@ -311,6 +311,87 @@ local function downloadBanner(filename)
 	return asset
 end
 
+--==================================================
+-- GITHUB CUSTOM LOGOS
+--==================================================
+local LOGO_BASE_URL =
+	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/logos/"
+
+local LOGO_FOLDER = "DayBreak/Logos"
+local LOGO_SESSION = tostring(math.floor(os.clock() * 1000000))
+
+local function downloadLogo(filename)
+	if not filename or filename == "" then
+		return nil
+	end
+
+	if not getAsset then
+		warn("[DayBreak] Executor does not support getcustomasset/getsynasset.")
+		return nil
+	end
+
+	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
+	local localPath =
+		LOGO_FOLDER .. "/" ..
+		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. LOGO_SESSION .. ".png"
+
+	if not writefile then
+		warn("[DayBreak] Executor does not support writefile.")
+		return nil
+	end
+
+	if makefolder then
+		pcall(makefolder, "DayBreak")
+		pcall(makefolder, LOGO_FOLDER)
+	end
+
+	local url = LOGO_BASE_URL .. safeName
+	local body = nil
+
+	local okHttp, httpBody = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+		body = httpBody
+	end
+
+	if not body then
+		local result = httpRequest({
+			Url = url,
+			Method = "GET",
+		})
+
+		if result and tonumber(result.StatusCode) == 200 and type(result.Body) == "string" then
+			body = result.Body
+		end
+	end
+
+	if not body then
+		warn("[DayBreak] Failed to download logo:", safeName)
+		return nil
+	end
+
+	local okWrite = pcall(function()
+		writefile(localPath, body)
+	end)
+
+	if not okWrite then
+		warn("[DayBreak] Failed to save logo:", localPath)
+		return nil
+	end
+
+	AssetCache[localPath] = nil
+	local asset = loadLocalAsset(localPath)
+
+	if not asset then
+		warn("[DayBreak] Downloaded logo but could not load asset:", safeName)
+		return nil
+	end
+
+	return asset
+end
+
 local function getTagConfig(player)
 	return SETTINGS.PlayerTags[player.UserId]
 		or SETTINGS.PlayerTags[player.Name]
@@ -515,8 +596,13 @@ local function createNametag(player, character)
 	circleStroke.Parent = starCircle
 
 	--==================================================
-	-- STAR GLOW
+	-- CUSTOM LOGO / STAR FALLBACK
 	--==================================================
+
+	local customLogoAsset = nil
+	if tagConfig.Logo then
+		customLogoAsset = downloadLogo(tagConfig.Logo)
+	end
 
 	local starGlow = Instance.new("TextLabel")
 	starGlow.BackgroundTransparency = 1
@@ -528,11 +614,8 @@ local function createNametag(player, character)
 	starGlow.TextScaled = true
 	starGlow.Font = Enum.Font.GothamBlack
 	starGlow.ZIndex = 2
+	starGlow.Visible = customLogoAsset == nil
 	starGlow.Parent = starCircle
-
-	--==================================================
-	-- STAR
-	--==================================================
 
 	local star = Instance.new("TextLabel")
 	star.BackgroundTransparency = 1
@@ -544,7 +627,20 @@ local function createNametag(player, character)
 	star.TextStrokeColor3 = SETTINGS.Orange
 	star.TextStrokeTransparency = 0.2
 	star.ZIndex = 3
+	star.Visible = customLogoAsset == nil
 	star.Parent = starCircle
+
+	local customLogo = Instance.new("ImageLabel")
+	customLogo.BackgroundTransparency = 1
+	customLogo.Size = UDim2.new(1, -8, 1, -8)
+	customLogo.Position = UDim2.fromOffset(4, 4)
+	customLogo.Image = customLogoAsset or ""
+	customLogo.ScaleType = Enum.ScaleType.Fit
+	customLogo.ImageColor3 = SETTINGS.White
+	customLogo.ZIndex = 3
+	customLogo.Visible = customLogoAsset ~= nil
+	customLogo.Parent = starCircle
+
 
 	--==================================================
 	-- PLAYER NAME
@@ -655,7 +751,7 @@ local function createNametag(player, character)
 	logoStroke.Parent = logoCircle
 
 	--==================================================
-	-- LOGO GLOW
+	-- CUSTOM LOGO / STAR FALLBACK
 	--==================================================
 
 	local logoGlow = Instance.new("TextLabel")
@@ -668,11 +764,8 @@ local function createNametag(player, character)
 	logoGlow.TextScaled = true
 	logoGlow.Font = Enum.Font.GothamBlack
 	logoGlow.ZIndex = 1
+	logoGlow.Visible = customLogoAsset == nil
 	logoGlow.Parent = logoCircle
-
-	--==================================================
-	-- LOGO STAR
-	--==================================================
 
 	local logoStar = Instance.new("TextLabel")
 	logoStar.BackgroundTransparency = 1
@@ -684,7 +777,20 @@ local function createNametag(player, character)
 	logoStar.TextStrokeColor3 = SETTINGS.Orange
 	logoStar.TextStrokeTransparency = 0.2
 	logoStar.ZIndex = 2
+	logoStar.Visible = customLogoAsset == nil
 	logoStar.Parent = logoCircle
+
+	local customLogoDistant = Instance.new("ImageLabel")
+	customLogoDistant.BackgroundTransparency = 1
+	customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
+	customLogoDistant.Position = UDim2.fromOffset(4, 4)
+	customLogoDistant.Image = customLogoAsset or ""
+	customLogoDistant.ScaleType = Enum.ScaleType.Fit
+	customLogoDistant.ImageColor3 = SETTINGS.White
+	customLogoDistant.ZIndex = 2
+	customLogoDistant.Visible = customLogoAsset ~= nil
+	customLogoDistant.Parent = logoCircle
+
 
 	--==================================================
 	-- ANIMATION
@@ -851,9 +957,11 @@ local function createNametag(player, character)
 
 			star.Rotation = rotation
 			starGlow.Rotation = rotation
+			customLogo.Rotation = rotation
 
 			logoStar.Rotation = rotation
 			logoGlow.Rotation = rotation
+			customLogoDistant.Rotation = rotation
 
 		end
 
