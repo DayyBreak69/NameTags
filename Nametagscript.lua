@@ -128,12 +128,17 @@ local SETTINGS = {
 	LogoRotateEnabled = true,
 	LogoRotateSpeed = 20,
 
-	-- Circular halo around the Catlogo
-	HaloEnabled = true,
-	HaloPulseSpeed = 2.2,
-	HaloMinTransparency = 0.25,
-	HaloMaxTransparency = 0.65,
-	HaloThickness = 3,
+	-- OWNER SPECIAL EFFECT
+	OwnerPulseEnabled = true,
+	OwnerPulseSpeed = 2.5,
+	OwnerPulseAmount = 0.035,
+	OwnerRingEnabled = true,
+	OwnerRingRotateSpeed = 45,
+
+	-- RAINBOW BANNER BORDER
+	RainbowBannerEnabled = true,
+	RainbowBannerSpeed = 90, -- degrees per second
+	RainbowBannerThickness = 3,
 
 	-- Floating
 	FloatingEnabled = true,
@@ -604,6 +609,33 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
+	-- ROTATING RAINBOW BANNER BORDER
+	--==================================================
+
+	local rainbowBorderStroke = Instance.new("UIStroke")
+	rainbowBorderStroke.Name = "RainbowBannerBorder"
+	rainbowBorderStroke.Thickness = SETTINGS.RainbowBannerThickness
+	rainbowBorderStroke.Transparency = 0
+	rainbowBorderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowBorderStroke.LineJoinMode = Enum.LineJoinMode.Round
+	rainbowBorderStroke.Parent = panel
+
+	local rainbowBorderGradient = Instance.new("UIGradient")
+	rainbowBorderGradient.Name = "RainbowRotation"
+	rainbowBorderGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
+		ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 0)),
+		ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 170, 255)),
+		ColorSequenceKeypoint.new(0.83, Color3.fromRGB(90, 0, 255)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 170)),
+	})
+	rainbowBorderGradient.Rotation = 0
+	rainbowBorderGradient.Parent = rainbowBorderStroke
+	rainbowBorderStroke.Enabled = SETTINGS.RainbowBannerEnabled
+
+	--==================================================
 	-- STAR CIRCLE
 	--==================================================
 
@@ -686,28 +718,45 @@ customLogoAspect.Parent = customLogo
 customLogo.Parent = starCircle
 
 	--==================================================
-	-- CATLOGO HALO
+	-- OWNER RING
 	--==================================================
 
-	local logoHalo = Instance.new("Frame")
-	logoHalo.Name = "CatlogoHalo"
-	logoHalo.BackgroundTransparency = 1
-	logoHalo.BorderSizePixel = 0
-	logoHalo.Size = UDim2.new(1, -10, 1, -10)
-	logoHalo.Position = UDim2.new(0, 5, 0, 5)
-	logoHalo.ZIndex = 2
-	logoHalo.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
-	logoHalo.Parent = starCircle
+	local ownerRing = Instance.new("Frame")
+	ownerRing.Name = "OwnerRing"
+	ownerRing.BackgroundTransparency = 1
+	ownerRing.BorderSizePixel = 0
+	ownerRing.Size = UDim2.new(1, -2, 1, -2)
+	ownerRing.Position = UDim2.new(0, 1, 0, 1)
+	ownerRing.ZIndex = 4
+	ownerRing.Parent = starCircle
 
-	local logoHaloCorner = Instance.new("UICorner")
-	logoHaloCorner.CornerRadius = UDim.new(1, 0)
-	logoHaloCorner.Parent = logoHalo
+	local ownerRingCorner = Instance.new("UICorner")
+	ownerRingCorner.CornerRadius = UDim.new(1, 0)
+	ownerRingCorner.Parent = ownerRing
 
-	local logoHaloStroke = Instance.new("UIStroke")
-	logoHaloStroke.Thickness = SETTINGS.HaloThickness
-	logoHaloStroke.Color = SETTINGS.OrangeBright
-	logoHaloStroke.Transparency = SETTINGS.HaloMaxTransparency
-	logoHaloStroke.Parent = logoHalo
+	local ownerRingStroke = Instance.new("UIStroke")
+	ownerRingStroke.Thickness = 2
+	ownerRingStroke.Color = SETTINGS.OrangeBright
+	ownerRingStroke.Transparency = 0.15
+	ownerRingStroke.Parent = ownerRing
+
+	local ownerBadge = Instance.new("TextLabel")
+	ownerBadge.Name = "OwnerBadge"
+	ownerBadge.BackgroundTransparency = 0
+	ownerBadge.BackgroundColor3 = SETTINGS.OrangeBright
+	ownerBadge.BorderSizePixel = 0
+	ownerBadge.Size = UDim2.new(0, 52, 0, 16)
+	ownerBadge.Position = UDim2.new(0.5, -26, 1, -3)
+	ownerBadge.ZIndex = 6
+	ownerBadge.Font = Enum.Font.GothamBold
+	ownerBadge.Text = "OWNER"
+	ownerBadge.TextColor3 = Color3.fromRGB(20, 12, 5)
+	ownerBadge.TextSize = 10
+	ownerBadge.Parent = starCircle
+
+	local ownerBadgeCorner = Instance.new("UICorner")
+	ownerBadgeCorner.CornerRadius = UDim.new(0, 8)
+	ownerBadgeCorner.Parent = ownerBadge
 
 
 	--==================================================
@@ -874,28 +923,27 @@ customLogoDistantAspect.Parent = customLogoDistant
 customLogoDistant.Parent = logoCircle
 
 	--==================================================
-	-- DISTANT CATLOGO HALO
+	-- OWNER DISTANT RING
 	--==================================================
 
-	local logoHaloDistant = Instance.new("Frame")
-	logoHaloDistant.Name = "CatlogoHaloDistant"
-	logoHaloDistant.BackgroundTransparency = 1
-	logoHaloDistant.BorderSizePixel = 0
-	logoHaloDistant.Size = UDim2.new(1, -10, 1, -10)
-	logoHaloDistant.Position = UDim2.new(0, 5, 0, 5)
-	logoHaloDistant.ZIndex = 2
-	logoHaloDistant.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
-	logoHaloDistant.Parent = logoCircle
+	local ownerRingDistant = Instance.new("Frame")
+	ownerRingDistant.Name = "OwnerRingDistant"
+	ownerRingDistant.BackgroundTransparency = 1
+	ownerRingDistant.BorderSizePixel = 0
+	ownerRingDistant.Size = UDim2.new(1, -2, 1, -2)
+	ownerRingDistant.Position = UDim2.new(0, 1, 0, 1)
+	ownerRingDistant.ZIndex = 4
+	ownerRingDistant.Parent = logoCircle
 
-	local logoHaloDistantCorner = Instance.new("UICorner")
-	logoHaloDistantCorner.CornerRadius = UDim.new(1, 0)
-	logoHaloDistantCorner.Parent = logoHaloDistant
+	local ownerRingDistantCorner = Instance.new("UICorner")
+	ownerRingDistantCorner.CornerRadius = UDim.new(1, 0)
+	ownerRingDistantCorner.Parent = ownerRingDistant
 
-	local logoHaloDistantStroke = Instance.new("UIStroke")
-	logoHaloDistantStroke.Thickness = SETTINGS.HaloThickness
-	logoHaloDistantStroke.Color = SETTINGS.OrangeBright
-	logoHaloDistantStroke.Transparency = SETTINGS.HaloMaxTransparency
-	logoHaloDistantStroke.Parent = logoHaloDistant
+	local ownerRingDistantStroke = Instance.new("UIStroke")
+	ownerRingDistantStroke.Thickness = 2
+	ownerRingDistantStroke.Color = SETTINGS.OrangeBright
+	ownerRingDistantStroke.Transparency = 0.15
+	ownerRingDistantStroke.Parent = ownerRingDistant
 
 
 	--==================================================
@@ -1004,6 +1052,18 @@ customLogoDistant.Parent = logoCircle
 		end
 
 		--==================================================
+		-- ROTATING RAINBOW BANNER BORDER
+		--==================================================
+
+		if SETTINGS.RainbowBannerEnabled then
+			rainbowBorderStroke.Enabled = true
+			rainbowBorderGradient.Rotation =
+				(time * SETTINGS.RainbowBannerSpeed) % 360
+		else
+			rainbowBorderStroke.Enabled = false
+		end
+
+		--==================================================
 		-- GLOW
 		--==================================================
 
@@ -1082,25 +1142,30 @@ customLogoDistant.Parent = logoCircle
 		end
 
 		--==================================================
-		-- HALO PULSE
+		-- OWNER EFFECT
 		--==================================================
 
-		if SETTINGS.HaloEnabled then
-			local haloPulse =
-				(math.sin(time * SETTINGS.HaloPulseSpeed) + 1) * 0.5
+		if SETTINGS.OwnerPulseEnabled then
+			local pulse = (math.sin(time * SETTINGS.OwnerPulseSpeed) + 1) * 0.5
+			local scale = 1 + (pulse * SETTINGS.OwnerPulseAmount)
 
-			local haloTransparency =
-				SETTINGS.HaloMaxTransparency
-				- (
-					haloPulse
-					* (
-						SETTINGS.HaloMaxTransparency
-						- SETTINGS.HaloMinTransparency
-					)
-				)
+			ownerRing.Size = UDim2.new(
+				scale, -2,
+				scale, -2
+			)
+			ownerRing.Position = UDim2.new(
+				0.5, -(scale * starCircle.AbsoluteSize.X - 2) / 2,
+				0.5, -(scale * starCircle.AbsoluteSize.Y - 2) / 2
+			)
 
-			logoHaloStroke.Transparency = haloTransparency
-			logoHaloDistantStroke.Transparency = haloTransparency
+			ownerRingStroke.Transparency = 0.05 + (pulse * 0.35)
+			ownerRingDistantStroke.Transparency = 0.05 + (pulse * 0.35)
+		end
+
+		if SETTINGS.OwnerRingEnabled then
+			local ownerRotation = (time * SETTINGS.OwnerRingRotateSpeed) % 360
+			ownerRing.Rotation = ownerRotation
+			ownerRingDistant.Rotation = ownerRotation
 		end
 
 		--==================================================
