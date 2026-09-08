@@ -405,7 +405,6 @@ local function createNametag(player, character)
 			backgroundCorner.CornerRadius = UDim.new(0, 18)
 			backgroundCorner.Parent = backgroundImage
 		end
-	end
 
 	--==================================================
 	-- PANEL GLOW
