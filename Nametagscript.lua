@@ -36,7 +36,12 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			Banner = "DayyBreak66.png",
+			Banner = "Daybreak.png",
+			BackgroundTransparency = 0.05,
+		},
+		["xOmqhayleealt"] = {
+			Role = "Admin",
+			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
 
