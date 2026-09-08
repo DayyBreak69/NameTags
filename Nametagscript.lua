@@ -552,14 +552,19 @@ local function removeNametag(character)
 		DayBreakLogo = true,
 	}
 
-	for _, child in ipairs(character:GetChildren()) do
+	-- Search the entire character hierarchy, not just direct children.
+	-- This catches legacy tags/overlays that were parented under Head or
+	-- another attachment and could otherwise survive the cleanup.
+	for _, child in ipairs(character:GetDescendants()) do
 		if child:IsA("BillboardGui") then
 			local name = tostring(child.Name)
 			if staleNames[name]
 				or name:find("DayBreak", 1, true)
 				or name:find("Nametag", 1, true)
 				or name:find("NameTag", 1, true)
-				or name:find("CircleLogo", 1, true) then
+				or name:find("CircleLogo", 1, true)
+				or name:find("ChromeSweep", 1, true)
+				or name:find("ShineSweep", 1, true) then
 				child:Destroy()
 			end
 		end
@@ -1056,7 +1061,7 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
 	})
 
-	local overlayType = tostring(overlayConfig.Type or "ChromeSweep")
+	local overlayType = tostring(overlayConfig.Type or "Prism")
 	local overlaySpeed = tonumber(overlayConfig.Speed) or 1.2
 	local overlayOpacity = math.clamp(tonumber(overlayConfig.Opacity) or 0.55, 0, 1)
 
@@ -1134,9 +1139,10 @@ local function createNametag(player, character)
 	end
 
 	if overlayType == "ChromeSweep" then
-		-- Deliberately no moving Frame is created for ChromeSweep.
-		-- This prevents the old rectangular sweep artifact entirely.
+		-- Legacy compatibility: ChromeSweep is permanently disabled.
+		-- Keep the overlay empty rather than creating any sweep geometry.
 		sweep = nil
+		overlayFolder.Visible = false
 	elseif overlayType == "GlassSweep" then
 		sweep = makeSweep("Sweep", 34, ColorSequence.new(
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
@@ -1537,6 +1543,11 @@ local function createNametag(player, character)
 	end
 
 	local function logoFxOn(name)
+		-- HARD BLOCK legacy sweep effects. These can recreate the old
+		-- ChromeSweep-looking artifact even when the config list is clean.
+		if name == "ChromeSweep" or name == "ShineSweep" or name == "Scanline" then
+			return false
+		end
 		return SETTINGS.LogoEffectsEnabled ~= false and logoEffectNames[name] == true
 	end
 
@@ -1611,7 +1622,7 @@ local function createNametag(player, character)
 		c.Parent=fxHalo
 	end
 
-	if logoFxOn("ShineSweep") then
+	if false and logoFxOn("ShineSweep") then
 		fxSweep=fxFrame("Sweep",8)
 		fxSweep.Size=UDim2.new(0,6,1,0)
 		fxSweep.Position=UDim2.fromScale(-0.15,0)
@@ -1627,7 +1638,7 @@ local function createNametag(player, character)
 		g.Parent=fxSweep
 	end
 
-	if logoFxOn("Scanline") then
+	if false and logoFxOn("Scanline") then
 		fxScan=fxFrame("Scanline",9)
 		fxScan.Size=UDim2.new(1,0,0,2)
 		fxScan.BackgroundColor3=Color3.new(1,1,1)
