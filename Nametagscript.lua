@@ -39,6 +39,11 @@ local SETTINGS = {
 			BackgroundFile = "workspace/Test.png",
 			BackgroundTransparency = 0.05,
 		},
+		["xOmqhayleealt"] = {
+			Role = "Admin",
+			BackgroundFile = "Haylee.png",
+			BackgroundTransparency = 0.05,
+		},
 
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
