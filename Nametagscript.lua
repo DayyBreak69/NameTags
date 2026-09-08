@@ -598,7 +598,9 @@ local function createNametag(player, character)
 			local backgroundCorner = Instance.new("UICorner")
 			backgroundCorner.CornerRadius = UDim.new(0, 18)
 			backgroundCorner.Parent = backgroundImage
-		end
+	else
+		warn("[DayBreak] No banner asset loaded for", player.Name, "filename:", tostring(bannerFile))
+	end
 
 	--==================================================
 	-- PANEL GLOW
@@ -611,69 +613,103 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
-	-- BRIGHT, LARGE ROTATING RAINBOW BANNER BORDER
+	-- BRIGHT ROTATING RAINBOW BORDER AROUND THE OUTSIDE OF THE BANNER
+	-- Uses real GUI segments instead of putting the border underneath
+	-- the banner, so it stays visible and the colors travel clockwise.
 	--==================================================
 
 	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.12, Color3.fromRGB(255, 80, 0)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.38, Color3.fromRGB(0, 255, 60)),
-		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
-		ColorSequenceKeypoint.new(0.63, Color3.fromRGB(0, 100, 255)),
-		ColorSequenceKeypoint.new(0.76, Color3.fromRGB(130, 0, 255)),
-		ColorSequenceKeypoint.new(0.88, Color3.fromRGB(255, 0, 220)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.10, Color3.fromRGB(255, 80, 0)),
+		ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.30, Color3.fromRGB(0, 255, 60)),
+		ColorSequenceKeypoint.new(0.40, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 100, 255)),
+		ColorSequenceKeypoint.new(0.60, Color3.fromRGB(130, 0, 255)),
+		ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255, 0, 220)),
+		ColorSequenceKeypoint.new(0.80, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.90, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 255)),
 	})
 
-	-- Main rainbow edge: thick and extremely bright.
-	local rainbowBorderStroke = Instance.new("UIStroke")
-	rainbowBorderStroke.Name = "RainbowBannerBorder"
-	rainbowBorderStroke.Thickness = SETTINGS.RainbowBannerThickness
-	rainbowBorderStroke.Transparency = 0
-	rainbowBorderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowBorderStroke.LineJoinMode = Enum.LineJoinMode.Round
-	rainbowBorderStroke.Parent = orangeFrame
+	local rainbowContainer = Instance.new("Frame")
+	rainbowContainer.Name = "RainbowBannerBorder"
+	rainbowContainer.BackgroundTransparency = 1
+	rainbowContainer.BorderSizePixel = 0
+	rainbowContainer.Size = UDim2.new(1, 10, 1, 10)
+	rainbowContainer.Position = UDim2.fromOffset(-5, -5)
+	rainbowContainer.ClipsDescendants = false
+	rainbowContainer.ZIndex = 20
+	rainbowContainer.Parent = billboard
 
-	local rainbowBorderGradient = Instance.new("UIGradient")
-	rainbowBorderGradient.Name = "RainbowRotation"
-	rainbowBorderGradient.Color = rainbowColors
-	rainbowBorderGradient.Rotation = 0
-	rainbowBorderGradient.Parent = rainbowBorderStroke
+	local rainbowSegments = {}
 
-	-- First glow layer.
-	local rainbowGlowStroke = Instance.new("UIStroke")
-	rainbowGlowStroke.Name = "RainbowBannerGlow"
-	rainbowGlowStroke.Thickness = SETTINGS.RainbowBannerGlowThickness
-	rainbowGlowStroke.Transparency = 0.45
-	rainbowGlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowGlowStroke.LineJoinMode = Enum.LineJoinMode.Round
-	rainbowGlowStroke.Parent = orangeFrame
+	local function makeRainbowSegment(name, position, size, rotation)
+		local glowOuter = Instance.new("Frame")
+		glowOuter.Name = name .. "OuterGlow"
+		glowOuter.BackgroundColor3 = Color3.new(1, 1, 1)
+		glowOuter.BackgroundTransparency = 0.62
+		glowOuter.BorderSizePixel = 0
+		glowOuter.Position = position
+		glowOuter.Size = size
+		glowOuter.ZIndex = 20
+		glowOuter.Parent = rainbowContainer
 
-	local rainbowGlowGradient = Instance.new("UIGradient")
-	rainbowGlowGradient.Name = "RainbowGlowRotation"
-	rainbowGlowGradient.Color = rainbowColors
-	rainbowGlowGradient.Rotation = 0
-	rainbowGlowGradient.Parent = rainbowGlowStroke
+		local glowGradient = Instance.new("UIGradient")
+		glowGradient.Color = rainbowColors
+		glowGradient.Rotation = rotation
+		glowGradient.Parent = glowOuter
 
-	-- Large outer glow layer.
-	local rainbowOuterGlowStroke = Instance.new("UIStroke")
-	rainbowOuterGlowStroke.Name = "RainbowBannerOuterGlow"
-	rainbowOuterGlowStroke.Thickness = SETTINGS.RainbowBannerOuterGlowThickness
-	rainbowOuterGlowStroke.Transparency = 0.72
-	rainbowOuterGlowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowOuterGlowStroke.LineJoinMode = Enum.LineJoinMode.Round
-	rainbowOuterGlowStroke.Parent = orangeFrame
+		local glowCorner = Instance.new("UICorner")
+		glowCorner.CornerRadius = UDim.new(0, 6)
+		glowCorner.Parent = glowOuter
 
-	local rainbowOuterGlowGradient = Instance.new("UIGradient")
-	rainbowOuterGlowGradient.Name = "RainbowOuterGlowRotation"
-	rainbowOuterGlowGradient.Color = rainbowColors
-	rainbowOuterGlowGradient.Rotation = 0
-	rainbowOuterGlowGradient.Parent = rainbowOuterGlowStroke
+		local main = Instance.new("Frame")
+		main.Name = name
+		main.BackgroundColor3 = Color3.new(1, 1, 1)
+		main.BackgroundTransparency = 0
+		main.BorderSizePixel = 0
+		main.Position = position
+		main.Size = size
+		main.ZIndex = 21
+		main.Parent = rainbowContainer
 
-	rainbowBorderStroke.Enabled = SETTINGS.RainbowBannerEnabled
-	rainbowGlowStroke.Enabled = SETTINGS.RainbowBannerEnabled
-	rainbowOuterGlowStroke.Enabled = SETTINGS.RainbowBannerEnabled
+		local gradient = Instance.new("UIGradient")
+		gradient.Name = "RainbowFlow"
+		gradient.Color = rainbowColors
+		gradient.Rotation = rotation
+		gradient.Parent = main
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 5)
+		corner.Parent = main
+
+		table.insert(rainbowSegments, {
+			main = main,
+			glow = glowOuter,
+			gradient = gradient,
+			glowGradient = glowGradient,
+			direction = rotation == 0 and Vector2.new(1, 0)
+				or rotation == 90 and Vector2.new(0, 1)
+				or rotation == 180 and Vector2.new(-1, 0)
+				or Vector2.new(0, -1),
+		})
+	end
+
+	local t = SETTINGS.RainbowBannerThickness
+	local g = SETTINGS.RainbowBannerGlowThickness
+	local total = t + 6
+
+	-- Four large bright sides. They overlap at the corners so there are no gaps.
+	makeRainbowSegment("Top", UDim2.fromOffset(-3, -3), UDim2.new(1, 6, 0, total), 0)
+	makeRainbowSegment("Right", UDim2.new(1, -total + 3, 0, -3), UDim2.new(0, total, 1, 6), 90)
+	makeRainbowSegment("Bottom", UDim2.new(0, -3, 1, -total + 3), UDim2.new(1, 6, 0, total), 180)
+	makeRainbowSegment("Left", UDim2.fromOffset(-3, -3), UDim2.new(0, total, 1, 6), 270)
+
+	for _, segment in ipairs(rainbowSegments) do
+		segment.main.Visible = SETTINGS.RainbowBannerEnabled
+		segment.glow.Visible = SETTINGS.RainbowBannerEnabled
+	end
 
 	--==================================================
 	-- STAR CIRCLE
@@ -733,29 +769,32 @@ local function createNametag(player, character)
 	star.Visible = customLogoAsset == nil
 	star.Parent = starCircle
 
-	local customLogo = Instance.new("ImageLabel")
-customLogo.Name = "customLogo"
-customLogo.BackgroundTransparency = 1
-customLogo.BorderSizePixel = 0
-customLogo.Size = UDim2.new(1, -8, 1, -8)
-customLogo.Position = UDim2.new(0, 4, 0, 4)
-customLogo.AnchorPoint = Vector2.new(0, 0)
-customLogo.Image = customLogoAsset
-customLogo.ScaleType = Enum.ScaleType.Fit
-customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
-customLogo.ZIndex = 3
-customLogo.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
-customLogo.ClipsDescendants = true
+	local customLogo = nil
+	if customLogoAsset and customLogoAsset ~= "" then
+		customLogo = Instance.new("ImageLabel")
+		customLogo.Name = "customLogo"
+		customLogo.BackgroundTransparency = 1
+		customLogo.BorderSizePixel = 0
+		customLogo.Size = UDim2.new(1, -8, 1, -8)
+		customLogo.Position = UDim2.new(0, 4, 0, 4)
+		customLogo.AnchorPoint = Vector2.new(0, 0)
+		customLogo.Image = customLogoAsset
+		customLogo.ScaleType = Enum.ScaleType.Fit
+		customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		customLogo.ZIndex = 3
+		customLogo.Visible = true
+		customLogo.ClipsDescendants = true
 
-local customLogoCorner = Instance.new("UICorner")
-customLogoCorner.CornerRadius = UDim.new(1, 0)
-customLogoCorner.Parent = customLogo
+		local customLogoCorner = Instance.new("UICorner")
+		customLogoCorner.CornerRadius = UDim.new(1, 0)
+		customLogoCorner.Parent = customLogo
 
-local customLogoAspect = Instance.new("UIAspectRatioConstraint")
-customLogoAspect.AspectRatio = 1
-customLogoAspect.Parent = customLogo
+		local customLogoAspect = Instance.new("UIAspectRatioConstraint")
+		customLogoAspect.AspectRatio = 1
+		customLogoAspect.Parent = customLogo
 
-customLogo.Parent = starCircle
+		customLogo.Parent = starCircle
+	end
 
 	--==================================================
 	-- OWNER RING
@@ -938,29 +977,32 @@ customLogo.Parent = starCircle
 	logoStar.Visible = customLogoAsset == nil
 	logoStar.Parent = logoCircle
 
-	local customLogoDistant = Instance.new("ImageLabel")
-customLogoDistant.Name = "customLogoDistant"
-customLogoDistant.BackgroundTransparency = 1
-customLogoDistant.BorderSizePixel = 0
-customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
-customLogoDistant.Position = UDim2.new(0, 4, 0, 4)
-customLogoDistant.AnchorPoint = Vector2.new(0, 0)
-customLogoDistant.Image = customLogoAsset
-customLogoDistant.ScaleType = Enum.ScaleType.Fit
-customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
-customLogoDistant.ZIndex = 3
-customLogoDistant.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
-customLogoDistant.ClipsDescendants = true
+	local customLogoDistant = nil
+	if customLogoAsset and customLogoAsset ~= "" then
+		customLogoDistant = Instance.new("ImageLabel")
+		customLogoDistant.Name = "customLogoDistant"
+		customLogoDistant.BackgroundTransparency = 1
+		customLogoDistant.BorderSizePixel = 0
+		customLogoDistant.Size = UDim2.new(1, -8, 1, -8)
+		customLogoDistant.Position = UDim2.new(0, 4, 0, 4)
+		customLogoDistant.AnchorPoint = Vector2.new(0, 0)
+		customLogoDistant.Image = customLogoAsset
+		customLogoDistant.ScaleType = Enum.ScaleType.Fit
+		customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
+		customLogoDistant.ZIndex = 3
+		customLogoDistant.Visible = true
+		customLogoDistant.ClipsDescendants = true
 
-local customLogoDistantCorner = Instance.new("UICorner")
-customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
-customLogoDistantCorner.Parent = customLogoDistant
+		local customLogoDistantCorner = Instance.new("UICorner")
+		customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
+		customLogoDistantCorner.Parent = customLogoDistant
 
-local customLogoDistantAspect = Instance.new("UIAspectRatioConstraint")
-customLogoDistantAspect.AspectRatio = 1
-customLogoDistantAspect.Parent = customLogoDistant
+		local customLogoDistantAspect = Instance.new("UIAspectRatioConstraint")
+		customLogoDistantAspect.AspectRatio = 1
+		customLogoDistantAspect.Parent = customLogoDistant
 
-customLogoDistant.Parent = logoCircle
+		customLogoDistant.Parent = logoCircle
+	end
 
 	--==================================================
 	-- OWNER DISTANT RING
@@ -1092,24 +1134,25 @@ customLogoDistant.Parent = logoCircle
 		end
 
 		--==================================================
-		-- ROTATING RAINBOW BANNER BORDER
+		-- CLOCKWISE RAINBOW BORDER ANIMATION
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled then
-			local rainbowRotation =
-				(time * SETTINGS.RainbowBannerSpeed) % 360
+			local flow = (time * (SETTINGS.RainbowBannerSpeed / 180)) % 2
 
-			rainbowBorderStroke.Enabled = true
-			rainbowGlowStroke.Enabled = true
-			rainbowOuterGlowStroke.Enabled = true
-
-			rainbowBorderGradient.Rotation = rainbowRotation
-			rainbowGlowGradient.Rotation = rainbowRotation
-			rainbowOuterGlowGradient.Rotation = rainbowRotation
+			for _, segment in ipairs(rainbowSegments) do
+				local d = segment.direction
+				local offset = Vector2.new(d.X * flow, d.Y * flow)
+				segment.gradient.Offset = offset
+				segment.glowGradient.Offset = offset
+				segment.main.Visible = true
+				segment.glow.Visible = true
+			end
 		else
-			rainbowBorderStroke.Enabled = false
-			rainbowGlowStroke.Enabled = false
-			rainbowOuterGlowStroke.Enabled = false
+			for _, segment in ipairs(rainbowSegments) do
+				segment.main.Visible = false
+				segment.glow.Visible = false
+			end
 		end
 
 		--==================================================
@@ -1172,11 +1215,15 @@ customLogoDistant.Parent = logoCircle
 
 			star.Rotation = rotation
 			starGlow.Rotation = rotation
-			customLogo.Rotation = rotation
+			if customLogo then
+				customLogo.Rotation = rotation
+			end
 
 			logoStar.Rotation = rotation
 			logoGlow.Rotation = rotation
-			customLogoDistant.Rotation = rotation
+			if customLogoDistant then
+				customLogoDistant.Rotation = rotation
+			end
 
 		end
 
@@ -1186,8 +1233,12 @@ customLogoDistant.Parent = logoCircle
 
 		if SETTINGS.LogoRotateEnabled then
 			local logoRotation = (time * SETTINGS.LogoRotateSpeed) % 360
-			customLogo.Rotation = logoRotation
-			customLogoDistant.Rotation = logoRotation
+			if customLogo then
+				customLogo.Rotation = logoRotation
+			end
+			if customLogoDistant then
+				customLogoDistant.Rotation = logoRotation
+			end
 		end
 
 		--==================================================
