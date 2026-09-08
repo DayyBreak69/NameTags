@@ -271,6 +271,13 @@ local function downloadBanner(filename)
 		return nil
 	end
 
+	-- GitHub 404/HTML responses can otherwise be saved as if they were PNGs.
+	local pngSignature = "\137PNG\r\n\26\n"
+	if body:sub(1, 8) ~= pngSignature then
+		warn("[DayBreak] Banner response is not a valid PNG:", safeName, "bytes:", #body)
+		return nil
+	end
+
 	local ok = pcall(function()
 		writefile(localPath, body)
 	end)
@@ -441,8 +448,10 @@ local function createNametag(player, character)
 			backgroundImage.BackgroundTransparency = 1
 			backgroundImage.Image = asset
 			backgroundImage.ImageTransparency = tagConfig.BackgroundTransparency or 0
-			backgroundImage.ScaleType = Enum.ScaleType.Crop
-			backgroundImage.ZIndex = 0
+			backgroundImage.ScaleType = Enum.ScaleType.Stretch
+			backgroundImage.ImageColor3 = Color3.new(1, 1, 1)
+			backgroundImage.Visible = true
+			backgroundImage.ZIndex = 1
 			backgroundImage.Parent = panel
 
 			local backgroundCorner = Instance.new("UICorner")
@@ -469,7 +478,7 @@ local function createNametag(player, character)
 	starCircle.Position = UDim2.new(0, 8, 0.5, -29)
 	starCircle.BackgroundColor3 = SETTINGS.DarkInner
 	starCircle.BorderSizePixel = 0
-	starCircle.ZIndex = 1
+	starCircle.ZIndex = 3
 	starCircle.Parent = panel
 
 	local circleCorner = Instance.new("UICorner")
@@ -536,7 +545,7 @@ local function createNametag(player, character)
 	nameLabel.TextStrokeColor3 = SETTINGS.Orange
 	nameLabel.TextStrokeTransparency = 0.15
 
-	nameLabel.ZIndex = 2
+	nameLabel.ZIndex = 4
 	nameLabel.Parent = panel
 
 	--==================================================
@@ -560,7 +569,7 @@ local function createNametag(player, character)
 	subtitle.TextStrokeColor3 = SETTINGS.Dark
 	subtitle.TextStrokeTransparency = 0.4
 
-	subtitle.ZIndex = 2
+	subtitle.ZIndex = 4
 	subtitle.Parent = panel
 
 	--==================================================
