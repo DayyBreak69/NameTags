@@ -49,13 +49,13 @@ local SETTINGS = {
 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-		DisplayName = "DayBreak",
+		DisplayName = "DayDay",
 			Banner = "DayyBreak66.png",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
 			Role = "Admin",
-		DisplayName = "Haylee",
+		DisplayName = "Day's Bitch",
 			Banner = "Haylee.png",
 			BackgroundTransparency = 0.05,
 		},
