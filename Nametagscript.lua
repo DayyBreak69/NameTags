@@ -23,31 +23,26 @@ local SETTINGS = {
 	},
 
 	-- Player-specific tags
-	-- Use Roblox UserIds so tags stay tied to the correct person.
-	-- BackgroundFile is a local executor asset path.
+	-- Banners are hosted in the GitHub /banners folder.
+	-- Use Roblox UserIds when possible so tags stay tied to the correct person.
+	-- Banner is ONLY the filename, for example: "DayyBreak66.png"
 	PlayerTags = {
-		-- You can use a Roblox UserId (recommended):
+		-- Recommended: use UserId
 		-- [123456789] = {
-		--	Role = "OWNER",
-		--	BackgroundFile = "workspace/Test.png",
+		--	Role = "FRIEND",
+		--	Banner = "Friend1.png",
 		--	BackgroundTransparency = 0.05,
 		-- },
 
-		-- Or use a username for easier setup: 
 		["DayyBreak66"] = {
 			Role = "OWNER",
-			BackgroundFile = "workspace/Test.png",
-			BackgroundTransparency = 0.05,
-		},
-		["xOmqhayleealt"] = {
-			Role = "Admin",
-			BackgroundFile = "Haylee.png",
+			Banner = "DayyBreak66.png",
 			BackgroundTransparency = 0.05,
 		},
 
 		-- ["FriendUsername"] = {
 		--	Role = "FRIEND",
-		--	BackgroundFile = "workspace/Friend.png",
+		--	Banner = "Friend1.png",
 		--	BackgroundTransparency = 0.05,
 		-- },
 	},
@@ -164,8 +159,20 @@ end
 -- LOCAL CUSTOM ASSETS
 --==================================================
 
+local HttpService = game:GetService("HttpService")
 local getAsset = getcustomasset or getsynasset
 local AssetCache = {}
+
+--==================================================
+-- GITHUB BANNERS
+--==================================================
+-- Put banner PNGs in: GitHub repo -> banners/
+-- Example raw file:
+-- https://raw.githubusercontent.com/DayyBreak69/NameTags/main/banners/DayyBreak66.png
+local BANNER_BASE_URL =
+	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/banners/"
+
+local BANNER_FOLDER = "DayBreak/Banners"
 
 local function loadLocalAsset(path)
 	if not getAsset or not path or path == "" then
@@ -187,6 +194,56 @@ local function loadLocalAsset(path)
 
 	warn("[DayBreak] Could not load local asset:", path)
 	return nil
+end
+
+local function downloadBanner(filename)
+	if not filename or filename == "" then
+		return nil
+	end
+
+	if not getAsset then
+		warn("[DayBreak] Executor does not support getcustomasset/getsynasset.")
+		return nil
+	end
+
+	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
+	local localPath = BANNER_FOLDER .. "/" .. safeName
+
+	-- Use the existing local file when it is already cached.
+	if isfile and isfile(localPath) then
+		return loadLocalAsset(localPath)
+	end
+
+	if not writefile then
+		warn("[DayBreak] Executor does not support writefile; cannot cache GitHub banners.")
+		return nil
+	end
+
+	if makefolder then
+		pcall(makefolder, "DayBreak")
+		pcall(makefolder, BANNER_FOLDER)
+	end
+
+	local result = httpRequest({
+		Url = BANNER_BASE_URL .. safeName,
+		Method = "GET",
+	})
+
+	if not result or tonumber(result.StatusCode) ~= 200 or not result.Body then
+		warn("[DayBreak] Failed to download banner:", safeName)
+		return nil
+	end
+
+	local ok = pcall(function()
+		writefile(localPath, result.Body)
+	end)
+
+	if not ok then
+		warn("[DayBreak] Failed to save banner:", localPath)
+		return nil
+	end
+
+	return loadLocalAsset(localPath)
 end
 
 local function getTagConfig(player)
@@ -322,9 +379,17 @@ local function createNametag(player, character)
 	local tagConfig = getTagConfig(player)
 	local backgroundImage
 
-	if tagConfig.BackgroundFile then
-		local asset = loadLocalAsset(tagConfig.BackgroundFile)
-		if asset then
+	local bannerFile = tagConfig.Banner
+	local asset = nil
+
+	if bannerFile then
+		asset = downloadBanner(bannerFile)
+	elseif tagConfig.BackgroundFile then
+		-- Backwards-compatible local asset support.
+		asset = loadLocalAsset(tagConfig.BackgroundFile)
+	end
+
+	if asset then
 			backgroundImage = Instance.new("ImageLabel")
 			backgroundImage.Name = "CustomBackground"
 			backgroundImage.Size = UDim2.fromScale(1, 1)
@@ -836,12 +901,20 @@ local function isActivePlayer(player)
 	return player == localPlayer or ActivePlayers[player.UserId] == true
 end
 
+-- Configured players always get a tag, even if they have never executed the script.
+-- This lets you assign custom banners/roles to specific friends.
+local function shouldShowNametag(player)
+	return isActivePlayer(player)
+		or SETTINGS.PlayerTags[player.UserId] ~= nil
+		or SETTINGS.PlayerTags[player.Name] ~= nil
+end
+
 local function syncNametags()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local character = player.Character
 
 		if character then
-			if isActivePlayer(player) then
+			if shouldShowNametag(player) then
 				if not character:FindFirstChild("CustomDayBreakNametag") then
 					task.spawn(function()
 						createNametag(player, character)
@@ -882,7 +955,7 @@ local function setupPlayer(player)
 		task.wait(0.5)
 
 		if character and character.Parent then
-			if isActivePlayer(player) then
+			if shouldShowNametag(player) then
 				createNametag(player, character)
 			end
 		end
