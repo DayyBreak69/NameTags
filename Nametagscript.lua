@@ -45,7 +45,7 @@ local SETTINGS = {
 			Overlay = {
 				-- Banner overlays disabled in the clean build.
 				Enabled = false,
-				Type = "Prism",
+				Type = "ShadowFlame",
 				Speed = 1.2,
 				Glow = true,
 				GlowStrength = 2,
