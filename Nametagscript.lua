@@ -541,9 +541,28 @@ local function removeNametag(character)
 		return
 	end
 
-	local oldTag = character:FindFirstChild("CustomDayBreakNametag")
-	if oldTag then
-		oldTag:Destroy()
+	-- Clean up tags left behind by previous versions of this script.
+	-- Earlier builds used several different BillboardGui names, so removing
+	-- only "CustomDayBreakNametag" could leave an old overlay/sweep alive.
+	local staleNames = {
+		CustomDayBreakNametag = true,
+		DayBreakNametag = true,
+		DayBreakNameTag = true,
+		DayBreakCircleLogo = true,
+		DayBreakLogo = true,
+	}
+
+	for _, child in ipairs(character:GetChildren()) do
+		if child:IsA("BillboardGui") then
+			local name = tostring(child.Name)
+			if staleNames[name]
+				or name:find("DayBreak", 1, true)
+				or name:find("Nametag", 1, true)
+				or name:find("NameTag", 1, true)
+				or name:find("CircleLogo", 1, true) then
+				child:Destroy()
+			end
+		end
 	end
 
 	local oldLogo = character:FindFirstChild("DayBreakCircleLogo")
@@ -580,6 +599,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
+	billboard:SetAttribute("DayBreakNametagVersion", "OverlapCleaned")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1114,9 +1134,8 @@ local function createNametag(player, character)
 	end
 
 	if overlayType == "ChromeSweep" then
-		-- ChromeSweep disabled here because the moving beam was producing
-		-- the unwanted rectangular/vertical bar on some clients.
-		-- The rest of the banner effects and rainbow border remain unchanged.
+		-- Deliberately no moving Frame is created for ChromeSweep.
+		-- This prevents the old rectangular sweep artifact entirely.
 		sweep = nil
 	elseif overlayType == "GlassSweep" then
 		sweep = makeSweep("Sweep", 34, ColorSequence.new(
@@ -1592,21 +1611,19 @@ local function createNametag(player, character)
 		c.Parent=fxHalo
 	end
 
-	if logoFxOn("ShineSweep") or logoFxOn("ChromeSweep") then
+	if logoFxOn("ShineSweep") then
 		fxSweep=fxFrame("Sweep",8)
-		-- Safe logo reflection: never rotate the Frame itself.
-		-- A rotated rectangular Frame was the source of the giant gray plane.
-		fxSweep.Size=UDim2.new(0,8,1,0)
+		fxSweep.Size=UDim2.new(0,6,1,0)
 		fxSweep.Position=UDim2.fromScale(-0.15,0)
 		fxSweep.Rotation=0
-		fxSweep.BackgroundTransparency=0.72
+		fxSweep.BackgroundTransparency=0.82
 		fxSweep.ClipsDescendants=true
 		local g=Instance.new("UIGradient")
-		g.Color=logoFxOn("ChromeSweep") and ColorSequence.new(
-			ColorSequenceKeypoint.new(0,Color3.fromRGB(80,80,90)),
+		g.Color=ColorSequence.new(
+			ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),
 			ColorSequenceKeypoint.new(0.5,Color3.new(1,1,1)),
-			ColorSequenceKeypoint.new(1,Color3.fromRGB(255,140,40))
-		) or ColorSequence.new(Color3.new(1,1,1),Color3.new(1,1,1))
+			ColorSequenceKeypoint.new(1,Color3.new(1,1,1))
+		)
 		g.Parent=fxSweep
 	end
 
