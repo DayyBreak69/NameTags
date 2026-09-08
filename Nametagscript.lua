@@ -128,6 +128,13 @@ local SETTINGS = {
 	LogoRotateEnabled = true,
 	LogoRotateSpeed = 20,
 
+	-- Circular halo around the Catlogo
+	HaloEnabled = true,
+	HaloPulseSpeed = 2.2,
+	HaloMinTransparency = 0.25,
+	HaloMaxTransparency = 0.65,
+	HaloThickness = 3,
+
 	-- Floating
 	FloatingEnabled = true,
 	FloatSpeed = 1.5,
@@ -678,6 +685,30 @@ customLogoAspect.Parent = customLogo
 
 customLogo.Parent = starCircle
 
+	--==================================================
+	-- CATLOGO HALO
+	--==================================================
+
+	local logoHalo = Instance.new("Frame")
+	logoHalo.Name = "CatlogoHalo"
+	logoHalo.BackgroundTransparency = 1
+	logoHalo.BorderSizePixel = 0
+	logoHalo.Size = UDim2.new(1, -10, 1, -10)
+	logoHalo.Position = UDim2.new(0, 5, 0, 5)
+	logoHalo.ZIndex = 2
+	logoHalo.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
+	logoHalo.Parent = starCircle
+
+	local logoHaloCorner = Instance.new("UICorner")
+	logoHaloCorner.CornerRadius = UDim.new(1, 0)
+	logoHaloCorner.Parent = logoHalo
+
+	local logoHaloStroke = Instance.new("UIStroke")
+	logoHaloStroke.Thickness = SETTINGS.HaloThickness
+	logoHaloStroke.Color = SETTINGS.OrangeBright
+	logoHaloStroke.Transparency = SETTINGS.HaloMaxTransparency
+	logoHaloStroke.Parent = logoHalo
+
 
 	--==================================================
 	-- PLAYER NAME
@@ -841,6 +872,30 @@ customLogoDistantAspect.AspectRatio = 1
 customLogoDistantAspect.Parent = customLogoDistant
 
 customLogoDistant.Parent = logoCircle
+
+	--==================================================
+	-- DISTANT CATLOGO HALO
+	--==================================================
+
+	local logoHaloDistant = Instance.new("Frame")
+	logoHaloDistant.Name = "CatlogoHaloDistant"
+	logoHaloDistant.BackgroundTransparency = 1
+	logoHaloDistant.BorderSizePixel = 0
+	logoHaloDistant.Size = UDim2.new(1, -10, 1, -10)
+	logoHaloDistant.Position = UDim2.new(0, 5, 0, 5)
+	logoHaloDistant.ZIndex = 2
+	logoHaloDistant.Visible = customLogoAsset ~= nil and customLogoAsset ~= ""
+	logoHaloDistant.Parent = logoCircle
+
+	local logoHaloDistantCorner = Instance.new("UICorner")
+	logoHaloDistantCorner.CornerRadius = UDim.new(1, 0)
+	logoHaloDistantCorner.Parent = logoHaloDistant
+
+	local logoHaloDistantStroke = Instance.new("UIStroke")
+	logoHaloDistantStroke.Thickness = SETTINGS.HaloThickness
+	logoHaloDistantStroke.Color = SETTINGS.OrangeBright
+	logoHaloDistantStroke.Transparency = SETTINGS.HaloMaxTransparency
+	logoHaloDistantStroke.Parent = logoHaloDistant
 
 
 	--==================================================
@@ -1024,6 +1079,28 @@ customLogoDistant.Parent = logoCircle
 			local logoRotation = (time * SETTINGS.LogoRotateSpeed) % 360
 			customLogo.Rotation = logoRotation
 			customLogoDistant.Rotation = logoRotation
+		end
+
+		--==================================================
+		-- HALO PULSE
+		--==================================================
+
+		if SETTINGS.HaloEnabled then
+			local haloPulse =
+				(math.sin(time * SETTINGS.HaloPulseSpeed) + 1) * 0.5
+
+			local haloTransparency =
+				SETTINGS.HaloMaxTransparency
+				- (
+					haloPulse
+					* (
+						SETTINGS.HaloMaxTransparency
+						- SETTINGS.HaloMinTransparency
+					)
+				)
+
+			logoHaloStroke.Transparency = haloTransparency
+			logoHaloDistantStroke.Transparency = haloTransparency
 		end
 
 		--==================================================
