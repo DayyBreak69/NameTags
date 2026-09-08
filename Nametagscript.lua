@@ -1138,17 +1138,9 @@ local function createNametag(player, character)
 		return f
 	end
 
-	if overlayType == "ChromeSweep" then
-		-- Legacy compatibility: ChromeSweep is permanently disabled.
-		-- Keep the overlay empty rather than creating any sweep geometry.
+	if overlayType == "ChromeSweep" or overlayType == "GlassSweep" then
+		-- Moving chrome/glass beams are permanently disabled.
 		sweep = nil
-		overlayFolder.Visible = false
-	elseif overlayType == "GlassSweep" then
-		sweep = makeSweep("Sweep", 34, ColorSequence.new(
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
-			ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(180,210,255))
-		), 1, 0)
 	elseif overlayType == "Holographic" or overlayType == "Iridescent" then
 		local f = addOverlay("ColorWash")
 		f.Size = UDim2.fromScale(1,1)
@@ -1164,8 +1156,6 @@ local function createNametag(player, character)
 			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(225,190,255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190))
 		), 0)
-	elseif overlayType == "DiamondShine" or overlayType == "Gloss" then
-		sweep = makeSweep("Sweep", overlayType == "DiamondShine" and 20 or 30, whiteSequence, 1, 0)
 	elseif overlayType == "MetallicFlow" then
 		local f = addOverlay("Metallic")
 		f.Size = UDim2.fromScale(1,1)
@@ -1186,11 +1176,9 @@ local function createNametag(player, character)
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255))
 		), 0)
 	elseif overlayType == "Prism" or overlayType == "SpeedLines" then
-		for i=1,6 do
-			local f = makeSweep("Strip"..i, overlayType == "Prism" and 9 or 5, rainbowSequence, 0.45, 12)
-			f.Position = UDim2.fromScale(-0.5-i*0.2, -0.2)
-			table.insert(strips,f)
-		end
+		-- No moving strips. The old implementation reused makeSweep(),
+		-- which produced the white/chrome bars seen on the nametag.
+		strips = {}
 	elseif overlayType == "ColorShift" or overlayType == "Sunset" or overlayType == "Ocean"
 		or overlayType == "Fire" or overlayType == "Ice" or overlayType == "Electric"
 		or overlayType == "Lava" or overlayType == "Toxic" or overlayType == "ShadowFlame"
@@ -1215,19 +1203,6 @@ local function createNametag(player, character)
 		f.Size = UDim2.fromScale(1,1)
 		f.BackgroundTransparency = 0.58
 		addOverlayGradient(f, palettes[overlayType], 0)
-	elseif overlayType == "EnergyPulse" then
-		sweep = makeSweep("Sweep", 42, whiteSequence, 1, 0)
-	elseif overlayType == "Scanline" then
-		scan = addOverlay("Scanline")
-		scan.Size = UDim2.new(1,0,0,2)
-		scan.BackgroundColor3 = Color3.new(1,1,1)
-		scan.BackgroundTransparency = 0.15
-	elseif overlayType == "LaserSweep" then
-		laser = makeSweep("Laser", 5, ColorSequence.new(
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,50,50)),
-			ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,50,50))
-		), 0.08, 0)
 	elseif overlayType == "Glitch" or overlayType == "Static" then
 		for i=1,5 do
 			local f=addOverlay("Glitch"..i)
