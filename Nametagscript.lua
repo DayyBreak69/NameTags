@@ -137,10 +137,10 @@ local SETTINGS = {
 
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
-	RainbowBannerSpeed = 140, -- degrees per second
-	RainbowBannerThickness = 7,
-	RainbowBannerGlowThickness = 14,
-	RainbowBannerOuterGlowThickness = 22,
+	RainbowBannerSpeed = 85, -- smooth rotation speed
+	RainbowBannerThickness = 4,
+	RainbowBannerGlowThickness = 8,
+	RainbowBannerOuterGlowThickness = 12,
 
 	-- Floating
 	FloatingEnabled = true,
@@ -613,102 +613,72 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
-	-- BRIGHT ROTATING RAINBOW BORDER AROUND THE OUTSIDE OF THE BANNER
-	-- Uses real GUI segments instead of putting the border underneath
-	-- the banner, so it stays visible and the colors travel clockwise.
+	-- SMOOTH ROTATING RAINBOW BORDER AROUND THE OUTSIDE
+	-- Single rounded strokes give the corners a continuous, smooth curve.
+	-- UIGradient is attached to each stroke and rotated continuously.
 	--==================================================
 
 	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.10, Color3.fromRGB(255, 80, 0)),
-		ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(0.30, Color3.fromRGB(0, 255, 60)),
-		ColorSequenceKeypoint.new(0.40, Color3.fromRGB(0, 255, 255)),
-		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 100, 255)),
-		ColorSequenceKeypoint.new(0.60, Color3.fromRGB(130, 0, 255)),
-		ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255, 0, 220)),
-		ColorSequenceKeypoint.new(0.80, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(0.90, Color3.fromRGB(255, 255, 0)),
-		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.12, Color3.fromRGB(255, 120, 0)),
+		ColorSequenceKeypoint.new(0.24, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(0, 255, 80)),
+		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.60, Color3.fromRGB(0, 110, 255)),
+		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(150, 0, 255)),
+		ColorSequenceKeypoint.new(0.84, Color3.fromRGB(255, 0, 220)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
 	})
 
 	local rainbowContainer = Instance.new("Frame")
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
-	rainbowContainer.Size = UDim2.new(1, 10, 1, 10)
-	rainbowContainer.Position = UDim2.fromOffset(-5, -5)
+	rainbowContainer.Size = UDim2.new(1, 12, 1, 12)
+	rainbowContainer.Position = UDim2.fromOffset(-6, -6)
 	rainbowContainer.ClipsDescendants = false
-	rainbowContainer.ZIndex = 20
+	rainbowContainer.ZIndex = 30
 	rainbowContainer.Parent = billboard
 
-	local rainbowSegments = {}
+	local rainbowLayers = {}
 
-	local function makeRainbowSegment(name, position, size, rotation)
-		local glowOuter = Instance.new("Frame")
-		glowOuter.Name = name .. "OuterGlow"
-		glowOuter.BackgroundColor3 = Color3.new(1, 1, 1)
-		glowOuter.BackgroundTransparency = 0.62
-		glowOuter.BorderSizePixel = 0
-		glowOuter.Position = position
-		glowOuter.Size = size
-		glowOuter.ZIndex = 20
-		glowOuter.Parent = rainbowContainer
+	local function makeRainbowStroke(name, thickness, transparency, zIndex)
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.Size = UDim2.new(1, 0, 1, 0)
+		frame.Position = UDim2.fromScale(0, 0)
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		frame.ZIndex = zIndex
+		frame.Parent = rainbowContainer
 
-		local glowGradient = Instance.new("UIGradient")
-		glowGradient.Color = rainbowColors
-		glowGradient.Rotation = rotation
-		glowGradient.Parent = glowOuter
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 18)
+		corner.Parent = frame
 
-		local glowCorner = Instance.new("UICorner")
-		glowCorner.CornerRadius = UDim.new(0, 6)
-		glowCorner.Parent = glowOuter
-
-		local main = Instance.new("Frame")
-		main.Name = name
-		main.BackgroundColor3 = Color3.new(1, 1, 1)
-		main.BackgroundTransparency = 0
-		main.BorderSizePixel = 0
-		main.Position = position
-		main.Size = size
-		main.ZIndex = 21
-		main.Parent = rainbowContainer
+		local stroke = Instance.new("UIStroke")
+		stroke.Name = "RainbowStroke"
+		stroke.Thickness = thickness
+		stroke.Transparency = transparency
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Parent = frame
 
 		local gradient = Instance.new("UIGradient")
 		gradient.Name = "RainbowFlow"
 		gradient.Color = rainbowColors
-		gradient.Rotation = rotation
-		gradient.Parent = main
+		gradient.Rotation = 0
+		gradient.Parent = stroke
 
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 5)
-		corner.Parent = main
-
-		table.insert(rainbowSegments, {
-			main = main,
-			glow = glowOuter,
-			gradient = gradient,
-			glowGradient = glowGradient,
-			direction = rotation == 0 and Vector2.new(1, 0)
-				or rotation == 90 and Vector2.new(0, 1)
-				or rotation == 180 and Vector2.new(-1, 0)
-				or Vector2.new(0, -1),
-		})
+		table.insert(rainbowLayers, {frame = frame, stroke = stroke, gradient = gradient})
 	end
 
-	local t = SETTINGS.RainbowBannerThickness
-	local g = SETTINGS.RainbowBannerGlowThickness
-	local total = t + 6
+	-- Thin, bright main line with subtle outer glow.
+	makeRainbowStroke("RainbowMain", SETTINGS.RainbowBannerThickness, 0.02, 31)
+	makeRainbowStroke("RainbowGlow", SETTINGS.RainbowBannerGlowThickness, 0.52, 30)
+	makeRainbowStroke("RainbowOuterGlow", SETTINGS.RainbowBannerOuterGlowThickness, 0.78, 29)
 
-	-- Four large bright sides. They overlap at the corners so there are no gaps.
-	makeRainbowSegment("Top", UDim2.fromOffset(-3, -3), UDim2.new(1, 6, 0, total), 0)
-	makeRainbowSegment("Right", UDim2.new(1, -total + 3, 0, -3), UDim2.new(0, total, 1, 6), 90)
-	makeRainbowSegment("Bottom", UDim2.new(0, -3, 1, -total + 3), UDim2.new(1, 6, 0, total), 180)
-	makeRainbowSegment("Left", UDim2.fromOffset(-3, -3), UDim2.new(0, total, 1, 6), 270)
-
-	for _, segment in ipairs(rainbowSegments) do
-		segment.main.Visible = SETTINGS.RainbowBannerEnabled
-		segment.glow.Visible = SETTINGS.RainbowBannerEnabled
+	for _, layer in ipairs(rainbowLayers) do
+		layer.frame.Visible = SETTINGS.RainbowBannerEnabled
 	end
 
 	--==================================================
@@ -1134,24 +1104,21 @@ local function createNametag(player, character)
 		end
 
 		--==================================================
-		-- CLOCKWISE RAINBOW BORDER ANIMATION
+		-- SMOOTH CONTINUOUS RAINBOW BORDER ANIMATION
+		-- Rotating the gradient on one rounded stroke keeps the rainbow
+		-- perfectly smooth through all four corners.
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled then
-			local flow = (time * (SETTINGS.RainbowBannerSpeed / 180)) % 2
+			local rotation = (time * SETTINGS.RainbowBannerSpeed) % 360
 
-			for _, segment in ipairs(rainbowSegments) do
-				local d = segment.direction
-				local offset = Vector2.new(d.X * flow, d.Y * flow)
-				segment.gradient.Offset = offset
-				segment.glowGradient.Offset = offset
-				segment.main.Visible = true
-				segment.glow.Visible = true
+			for _, layer in ipairs(rainbowLayers) do
+				layer.gradient.Rotation = rotation
+				layer.frame.Visible = true
 			end
 		else
-			for _, segment in ipairs(rainbowSegments) do
-				segment.main.Visible = false
-				segment.glow.Visible = false
+			for _, layer in ipairs(rainbowLayers) do
+				layer.frame.Visible = false
 			end
 		end
 
