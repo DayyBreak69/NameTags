@@ -11,6 +11,8 @@ local localPlayer = Players.LocalPlayer
 --==================================================
 
 local SETTINGS = {
+		LogoEffectsEnabled = true,
+		LogoEffectsSpeed = 1,
 
 	-- Display
 	Font = Enum.Font.GothamBold,
@@ -42,14 +44,20 @@ local SETTINGS = {
 
 			Logo = "Catlogo.png",
 
+
+			-- Overlay system: change ONLY Type to select an effect.
+			-- Available: ChromeSweep, GlassSweep, Holographic, Iridescent,
+			-- DiamondShine, Gloss, MetallicFlow, RainbowFlow, RainbowPulse,
+			-- NeonRainbow, Aurora, Prism, ColorShift, Fire, Ice, Electric,
+			-- Lava, Toxic, ShadowFlame, EnergyPulse, Scanline, Glitch, Cyber,
+			-- Static, SpeedLines, LaserSweep, Galaxy, Cosmic, Void, Starlight,
+			-- Sunset, Ocean.
 			Overlay = {
 				Enabled = true,
 				Type = "ChromeSweep",
 				Speed = 1.2,
+				Opacity = 0.55,
 				Glow = true,
-				GlowStrength = 2,
-				Rotation = 0,
-				Pulse = true,
 			},
 
 			BackgroundTransparency = 0.05,
@@ -905,6 +913,772 @@ local function createNametag(player, character)
 	ownerBadgeCorner.Parent = ownerBadge
 
 
+
+	--==================================================
+	-- FULL BANNER OVERLAY SYSTEM
+	-- 32 selectable effects. Change ONLY Overlay.Type.
+	--==================================================
+
+	local overlayConfig = tagConfig.Overlay or {
+		Enabled = true,
+		Type = "ChromeSweep",
+		Speed = 1.2,
+		Opacity = 0.55,
+		Glow = true,
+	}
+
+	local overlayFolder = Instance.new("Frame")
+	overlayFolder.Name = "BannerOverlay"
+	overlayFolder.BackgroundTransparency = 1
+	overlayFolder.BorderSizePixel = 0
+	overlayFolder.Size = UDim2.fromScale(1, 1)
+	overlayFolder.ClipsDescendants = true
+	overlayFolder.ZIndex = 4
+	overlayFolder.Parent = panel
+
+	local overlayCorner = Instance.new("UICorner")
+	overlayCorner.CornerRadius = UDim.new(0, 18)
+	overlayCorner.Parent = overlayFolder
+
+	local overlayObjects = {}
+	local function newOverlayFrame(name)
+		local f = Instance.new("Frame")
+		f.Name = name
+		f.BorderSizePixel = 0
+		f.BackgroundTransparency = 1
+		f.Parent = overlayFolder
+		table.insert(overlayObjects, f)
+		return f
+	end
+
+	local function gradient(obj, sequence, rotation)
+		local g = Instance.new("UIGradient")
+		g.Color = sequence
+		g.Rotation = rotation or 0
+		g.Parent = obj
+		return g
+	end
+
+	local rainbow = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,0,0)),
+		ColorSequenceKeypoint.new(0.14, Color3.fromRGB(255,120,0)),
+		ColorSequenceKeypoint.new(0.28, Color3.fromRGB(255,255,0)),
+		ColorSequenceKeypoint.new(0.42, Color3.fromRGB(0,255,80)),
+		ColorSequenceKeypoint.new(0.57, Color3.fromRGB(0,255,255)),
+		ColorSequenceKeypoint.new(0.71, Color3.fromRGB(50,100,255)),
+		ColorSequenceKeypoint.new(0.86, Color3.fromRGB(190,0,255)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,0,170)),
+	})
+
+	local typeName = tostring(overlayConfig.Type or "ChromeSweep")
+	local speed = tonumber(overlayConfig.Speed) or 1.2
+	local alpha = math.clamp(tonumber(overlayConfig.Opacity) or 0.55, 0, 1)
+
+	-- Base overlay layer.
+	local baseOverlay = newOverlayFrame("Base")
+	baseOverlay.Size = UDim2.fromScale(1,1)
+	baseOverlay.BackgroundTransparency = 1 - alpha
+
+	-- Create a moving horizontal strip helper.
+	local function addSweep(name, width, height, colorSeq, z)
+		local f = newOverlayFrame(name)
+		f.Size = UDim2.fromOffset(width, height)
+		f.Position = UDim2.fromScale(-0.4, 0)
+		f.BackgroundTransparency = 0.25
+		f.ZIndex = z or 5
+		gradient(f, colorSeq, 0)
+		return f
+	end
+
+	local seqWhite = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+		ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+		ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+	})
+
+	local seqChrome = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(70,70,80)),
+		ColorSequenceKeypoint.new(0.35, Color3.fromRGB(255,255,255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130,130,145)),
+		ColorSequenceKeypoint.new(0.65, Color3.fromRGB(255,255,255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50,50,60)),
+	})
+
+	-- Each branch creates only the primitives needed for that effect.
+	if typeName == "ChromeSweep" then
+		local f = addSweep("Chrome", 90, 110, seqChrome, 5)
+		f.Rotation = 12
+	elseif typeName == "GlassSweep" then
+		local f = addSweep("Glass", 65, 110, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(180,220,255)),
+			ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(170,200,255)),
+		}), 5)
+		f.BackgroundTransparency = 0.65
+		f.Rotation = 10
+	elseif typeName == "Holographic" then
+		local f = newOverlayFrame("Hologram")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.45
+		f.ZIndex = 5
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,80,220)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(80,180,255)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(180,80,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,80,220)),
+		}), 0)
+	elseif typeName == "Iridescent" then
+		local f = newOverlayFrame("Iridescent")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.55
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,190,230)),
+			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(180,230,255)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(220,190,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255,240,190)),
+		}), 0)
+	elseif typeName == "DiamondShine" then
+		local f = addSweep("Diamond", 25, 110, seqWhite, 6)
+		f.Rotation = 15
+	elseif typeName == "Gloss" then
+		local f = addSweep("Gloss", 38, 110, seqWhite, 5)
+		f.BackgroundTransparency = 0.5
+	elseif typeName == "MetallicFlow" then
+		local f = newOverlayFrame("Metallic")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.35
+		gradient(f, seqChrome, 0)
+	elseif typeName == "RainbowFlow" or typeName == "NeonRainbow" or typeName == "RainbowPulse" then
+		local f = newOverlayFrame("Rainbow")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 1 - alpha
+		gradient(f, rainbow, 0)
+		if typeName == "NeonRainbow" then
+			f.BackgroundTransparency = 0.35
+		end
+	elseif typeName == "Aurora" then
+		local f = newOverlayFrame("Aurora")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.4
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(20,255,150)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40,150,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(190,60,255)),
+		}), 0)
+	elseif typeName == "Prism" then
+		for i = 1, 4 do
+			local f = addSweep("Prism"..i, 10, 110, rainbow, 5+i)
+			f.Position = UDim2.fromScale(-0.2 - i*0.18, 0)
+			f.Rotation = 12
+		end
+	elseif typeName == "ColorShift" then
+		local f = newOverlayFrame("ColorShift")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.5
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,70,100)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(70,150,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(170,70,255)),
+		}), 0)
+	elseif typeName == "Fire" or typeName == "Lava" then
+		local f = newOverlayFrame(typeName)
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = typeName == "Fire" and 0.4 or 0.5
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(120,0,0)),
+			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(255,40,0)),
+			ColorSequenceKeypoint.new(0.65, Color3.fromRGB(255,180,0)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120,0,0)),
+		}), 90)
+	elseif typeName == "Ice" then
+		local f = newOverlayFrame("Ice")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.48
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(50,130,255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220,255,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(40,190,255)),
+		}), 0)
+	elseif typeName == "Electric" then
+		for i = 1, 3 do
+			local f = addSweep("Electric"..i, 8, 110, ColorSequence.new(Color3.fromRGB(80,120,255), Color3.fromRGB(220,100,255)), 6)
+			f.Rotation = 20 + i*7
+		end
+	elseif typeName == "Toxic" then
+		local f = newOverlayFrame("Toxic")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.48
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(20,80,0)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(180,255,0)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(30,160,20)),
+		}), 0)
+	elseif typeName == "ShadowFlame" then
+		local f = newOverlayFrame("ShadowFlame")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.42
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(20,0,30)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(100,0,100)),
+			ColorSequenceKeypoint.new(0.7, Color3.fromRGB(180,30,80)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(15,0,25)),
+		}), 90)
+	elseif typeName == "EnergyPulse" then
+		local f = addSweep("Energy", 70, 110, seqWhite, 6)
+		f.BackgroundTransparency = 0.45
+	elseif typeName == "Scanline" then
+		local f = newOverlayFrame("Scanline")
+		f.Size = UDim2.fromOffset(4,110)
+		f.BackgroundColor3 = Color3.fromRGB(0,220,255)
+		f.BackgroundTransparency = 0.15
+		f.ZIndex = 7
+	elseif typeName == "Glitch" then
+		for i = 1, 3 do
+			local f = newOverlayFrame("Glitch"..i)
+			f.Size = UDim2.fromScale(1,0.12)
+			f.Position = UDim2.fromScale(0,0.15*i)
+			f.BackgroundColor3 = ({Color3.fromRGB(255,0,80),Color3.fromRGB(0,255,255),Color3.fromRGB(160,0,255)})[i]
+			f.BackgroundTransparency = 0.55
+			f.ZIndex = 7
+		end
+	elseif typeName == "Cyber" then
+		local f = newOverlayFrame("Cyber")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.55
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,255,255)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60,60,160)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(220,0,255)),
+		}), 0)
+	elseif typeName == "Static" then
+		for i = 1, 9 do
+			local f = newOverlayFrame("Static"..i)
+			f.Size = UDim2.fromScale(1,0.02)
+			f.Position = UDim2.fromScale(0, i/10)
+			f.BackgroundColor3 = Color3.new(1,1,1)
+			f.BackgroundTransparency = 0.88
+		end
+	elseif typeName == "SpeedLines" then
+		for i = 1, 7 do
+			local f = addSweep("Speed"..i, 5, 110, seqWhite, 6)
+			f.Position = UDim2.fromScale(-0.3 - i*0.2,0)
+			f.Rotation = 10
+			f.BackgroundTransparency = 0.65
+		end
+	elseif typeName == "LaserSweep" then
+		local f = addSweep("Laser", 5, 110, ColorSequence.new(Color3.fromRGB(255,50,50),Color3.new(1,1,1),Color3.fromRGB(255,50,50)), 8)
+		f.BackgroundTransparency = 0.1
+	elseif typeName == "Galaxy" or typeName == "Cosmic" then
+		local f = newOverlayFrame(typeName)
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.45
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(20,0,70)),
+			ColorSequenceKeypoint.new(0.35, Color3.fromRGB(80,20,180)),
+			ColorSequenceKeypoint.new(0.65, Color3.fromRGB(30,70,180)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(10,0,50)),
+		}), 0)
+		-- Cosmic gets extra star particles below.
+	elseif typeName == "Void" then
+		local f = newOverlayFrame("Void")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.3
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(45,0,70)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,0,0)),
+		}), 0)
+	elseif typeName == "Starlight" then
+		for i = 1, 7 do
+			local f = newOverlayFrame("Star"..i)
+			f.Size = UDim2.fromOffset(3,3)
+			f.Position = UDim2.fromScale((i*0.137)%1, (i*0.271)%1)
+			f.BackgroundColor3 = Color3.new(1,1,1)
+			f.BackgroundTransparency = 0.25
+			f.ZIndex = 7
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(1,0)
+			c.Parent = f
+		end
+	elseif typeName == "Sunset" then
+		local f = newOverlayFrame("Sunset")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.45
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255,100,30)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,70,150)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120,40,180)),
+		}), 0)
+	elseif typeName == "Ocean" then
+		local f = newOverlayFrame("Ocean")
+		f.Size = UDim2.fromScale(1,1)
+		f.BackgroundTransparency = 0.45
+		gradient(f, ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(0,70,160)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(0,220,255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0,80,190)),
+		}), 0)
+	end
+
+	if not overlayConfig.Enabled then
+		overlayFolder.Visible = false
+	end
+
+
+
+	--==================================================
+	-- FULL LOGO OVERLAY / FX SYSTEM
+	-- 26 selectable logo effects.
+	-- Effects are additive: enable/disable individual effects
+	-- in SETTINGS.LogoEffects.
+	--==================================================
+
+	local logoEffectsEnabled = SETTINGS.LogoEffectsEnabled ~= false
+	local logoFxSpeed = tonumber(SETTINGS.LogoEffectsSpeed) or 1
+	local logoEffectNames = {}
+	for _, effectName in ipairs(SETTINGS.LogoEffects or {}) do
+		logoEffectNames[effectName] = true
+	end
+
+	local function logoFxOn(name)
+		return logoEffectsEnabled and logoEffectNames[name] == true
+	end
+
+	local logoFxFolder = Instance.new("Folder")
+	logoFxFolder.Name = "LogoEffects"
+	logoFxFolder.Parent = billboard
+
+	local function makeFxFrame(name, z)
+		local f = Instance.new("Frame")
+		f.Name = name
+		f.BackgroundTransparency = 1
+		f.BorderSizePixel = 0
+		f.Size = UDim2.fromScale(1,1)
+		f.Position = UDim2.fromScale(0,0)
+		f.ZIndex = z or 8
+		f.Parent = logoFxFolder
+		return f
+	end
+
+	local function addRound(f, radius)
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(1, 0)
+		c.Parent = f
+		return c
+	end
+
+	local function addStroke(parent, thickness, transparency)
+		local s = Instance.new("UIStroke")
+		s.Thickness = thickness
+		s.Transparency = transparency
+		s.Parent = parent
+		return s
+	end
+
+	local function addGradient(parent, seq, rotation)
+		local g = Instance.new("UIGradient")
+		g.Color = seq
+		g.Rotation = rotation or 0
+		g.Parent = parent
+		return g
+	end
+
+	local logoFxObjects = {}
+	local function track(obj)
+		table.insert(logoFxObjects, obj)
+		return obj
+	end
+
+	-- Main FX target is the custom logo when present, otherwise the normal
+	-- logo image used by the nametag.
+	local logoFxTarget = customLogo or logoStar or logoGlow
+	if logoFxTarget then
+		logoFxTarget.AnchorPoint = Vector2.new(0.5,0.5)
+	end
+
+	-- Pulse / breathing / rotation / floating / tilt are applied directly.
+	local logoBaseSize = logoFxTarget and logoFxTarget.Size
+	local logoBasePosition = logoFxTarget and logoFxTarget.Position
+
+	-- Glow pulse + outline glow.
+	local logoGlowFx
+	if logoFxTarget and (logoFxOn("GlowPulse") or logoFxOn("OutlineGlow")) then
+		logoGlowFx = makeFxFrame("Glow", 7)
+		logoGlowFx.Size = UDim2.new(1,10,1,10)
+		logoGlowFx.Position = UDim2.new(0,-5,0,-5)
+		logoGlowFx.BackgroundTransparency = 1
+		logoGlowFx.BackgroundColor3 = Color3.fromRGB(255,150,45)
+		local stroke = addStroke(logoGlowFx, logoFxOn("OutlineGlow") and 3 or 6, 0.25)
+		stroke.Color = Color3.fromRGB(255,165,60)
+		if logoFxOn("GlowPulse") then
+			stroke.Transparency = 0.45
+		end
+		track(stroke)
+	end
+
+	-- Outer ring + independently rotating ring.
+	local outerRing
+	if logoFxTarget and (logoFxOn("OuterRing") or logoFxOn("RingRotation") or logoFxOn("CounterRotation")) then
+		outerRing = makeFxFrame("OuterRing", 6)
+		outerRing.Size = UDim2.new(1,16,1,16)
+		outerRing.Position = UDim2.new(0,-8,0,-8)
+		outerRing.BackgroundTransparency = 1
+		local s = addStroke(outerRing, 2, 0.12)
+		s.Color = Color3.fromRGB(255,145,40)
+		track(s)
+	end
+
+	-- Halo: soft circular light.
+	local halo
+	if logoFxTarget and logoFxOn("Halo") then
+		halo = makeFxFrame("Halo", 4)
+		halo.Size = UDim2.new(1,22,1,22)
+		halo.Position = UDim2.new(0,-11,0,-11)
+		halo.BackgroundColor3 = Color3.fromRGB(255,170,70)
+		halo.BackgroundTransparency = 0.88
+		addRound(halo)
+		local s = addStroke(halo, 5, 0.55)
+		s.Color = Color3.fromRGB(255,180,80)
+		track(s)
+	end
+
+	-- Shine / chrome sweep.
+	local sweep
+	if logoFxTarget and (logoFxOn("ShineSweep") or logoFxOn("ChromeSweep")) then
+		sweep = makeFxFrame("ShineSweep", 10)
+		sweep.Size = UDim2.fromScale(0.20,1.5)
+		sweep.Position = UDim2.fromScale(-0.25,-0.25)
+		sweep.Rotation = 12
+		sweep.BackgroundTransparency = logoFxOn("ChromeSweep") and 0.15 or 0.30
+		local seq = logoFxOn("ChromeSweep")
+			and ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(80,80,90)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,255,255)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255,135,45)),
+			})
+			or ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
+				ColorSequenceKeypoint.new(1, Color3.new(1,1,1)),
+			})
+		addGradient(sweep, seq, 0)
+		track(sweep)
+	end
+
+	-- Scanline.
+	local scanline
+	if logoFxTarget and logoFxOn("Scanline") then
+		scanline = makeFxFrame("Scanline", 11)
+		scanline.Size = UDim2.new(1,0,0,2)
+		scanline.Position = UDim2.fromScale(0,-0.1)
+		scanline.BackgroundColor3 = Color3.new(1,1,1)
+		scanline.BackgroundTransparency = 0.18
+		track(scanline)
+	end
+
+	-- Energy aura / ripple / shockwave.
+	local aura
+	if logoFxTarget and logoFxOn("EnergyAura") then
+		aura = makeFxFrame("EnergyAura", 3)
+		aura.Size = UDim2.new(1,8,1,8)
+		aura.Position = UDim2.new(0,-4,0,-4)
+		aura.BackgroundColor3 = Color3.fromRGB(255,145,40)
+		aura.BackgroundTransparency = 0.86
+		addRound(aura)
+	end
+
+	local ripple
+	if logoFxTarget and logoFxOn("Ripple") then
+		ripple = makeFxFrame("Ripple", 5)
+		ripple.Size = UDim2.new(0,4,0,4)
+		ripple.Position = UDim2.fromScale(0.5,0.5)
+		ripple.BackgroundTransparency = 1
+		local s = addStroke(ripple, 2, 0.1)
+		s.Color = Color3.fromRGB(255,165,60)
+	end
+
+	local shockwave
+	if logoFxTarget and logoFxOn("Shockwave") then
+		shockwave = makeFxFrame("Shockwave", 5)
+		shockwave.Size = UDim2.new(0,3,0,3)
+		shockwave.Position = UDim2.fromScale(0.5,0.5)
+		shockwave.BackgroundTransparency = 1
+		local s = addStroke(shockwave, 2, 0.0)
+		s.Color = Color3.fromRGB(255,190,90)
+	end
+
+	-- Tiny orbiting particles.
+	local orbitParticles = {}
+	if logoFxTarget and logoFxOn("OrbitingParticles") then
+		for i = 1, 8 do
+			local p = makeFxFrame("OrbitParticle"..i, 9)
+			p.Size = UDim2.fromOffset(3,3)
+			p.BackgroundColor3 = Color3.fromRGB(255,170,60)
+			p.BackgroundTransparency = 0.05
+			addRound(p)
+			orbitParticles[i] = p
+		end
+	end
+
+	-- Sparkle flashes.
+	local sparkles = {}
+	if logoFxTarget and logoFxOn("SparkleFlashes") then
+		for i = 1, 5 do
+			local s = makeFxFrame("Sparkle"..i, 12)
+			s.Size = UDim2.fromOffset(5,5)
+			s.Position = UDim2.fromScale(0.15 + i*0.16, 0.15 + ((i*0.37)%0.7))
+			s.BackgroundColor3 = Color3.new(1,1,1)
+			s.BackgroundTransparency = 1
+			s.Rotation = 45
+			sparkles[i] = s
+		end
+	end
+
+	-- Particle burst pool.
+	local burstParticles = {}
+	if logoFxTarget and logoFxOn("ParticleBurst") then
+		for i = 1, 12 do
+			local p = makeFxFrame("Burst"..i, 10)
+			p.Size = UDim2.fromOffset(3,3)
+			p.Position = UDim2.fromScale(0.5,0.5)
+			p.BackgroundColor3 = Color3.fromRGB(255,170,60)
+			p.BackgroundTransparency = 1
+			addRound(p)
+			burstParticles[i] = p
+		end
+	end
+
+	-- Trail afterimages.
+	local trailImages = {}
+	if logoFxTarget and logoFxOn("Trail") and logoFxTarget:IsA("ImageLabel") then
+		for i = 1, 3 do
+			local tr = logoFxTarget:Clone()
+			tr.Name = "Trail"..i
+			tr.BackgroundTransparency = 1
+			tr.ImageTransparency = 1
+			tr.ZIndex = 5
+			tr.Parent = logoFxFolder
+			trailImages[i] = tr
+		end
+	end
+
+	-- Electric arcs: short animated bars around the logo.
+	local arcs = {}
+	if logoFxTarget and logoFxOn("ElectricArcs") then
+		for i = 1, 6 do
+			local a = makeFxFrame("Arc"..i, 11)
+			a.Size = UDim2.fromOffset(12,2)
+			a.Position = UDim2.fromScale(0.5,0.5)
+			a.BackgroundColor3 = Color3.fromRGB(255,190,80)
+			a.BackgroundTransparency = 0.1
+			a.Rotation = i * 60
+			arcs[i] = a
+		end
+	end
+
+	local rng = Random.new()
+	local logoFxTime = rng:NextNumber(0,100)
+	local lastBurst = -10
+	local lastShock = -10
+	local lastSpark = -10
+
+	local function setLogoScale(scale)
+		if not logoFxTarget or not logoBaseSize then return end
+		logoFxTarget.Size = UDim2.new(
+			logoBaseSize.X.Scale * scale,
+			math.floor(logoBaseSize.X.Offset * scale),
+			logoBaseSize.Y.Scale * scale,
+			math.floor(logoBaseSize.Y.Offset * scale)
+		)
+	end
+
+	local logoFxConnection
+	if logoFxTarget and logoFxTarget.Parent then
+		logoFxConnection = RunService.RenderStepped:Connect(function(dt)
+			if not logoFxTarget.Parent then
+				logoFxConnection:Disconnect()
+				return
+			end
+
+			logoFxTime += dt * logoFxSpeed
+			local t = logoFxTime
+
+			-- Pulse: smooth scale.
+			local scale = 1
+			if logoFxOn("Pulse") then
+				scale *= 1 + math.sin(t * 2.0) * (SETTINGS.LogoPulseAmount or 0.035)
+			end
+			if logoFxOn("BreathingEffect") then
+				scale *= 1 + math.sin(t * 1.15) * 0.018
+			end
+			setLogoScale(scale)
+
+			-- Brightness / transparency pulse.
+			if logoFxOn("BrightnessPulse") and logoFxTarget:IsA("ImageLabel") then
+				logoFxTarget.ImageTransparency = 0.05 + (math.sin(t*2)+1)*0.075
+			end
+			if logoFxOn("BreathingEffect") and logoFxTarget:IsA("ImageLabel") then
+				logoFxTarget.ImageTransparency = 0.04 + (math.sin(t*1.15)+1)*0.045
+			end
+
+			-- Rotation.
+			if logoFxOn("Rotation") then
+				logoFxTarget.Rotation = (t * (SETTINGS.LogoRotationSpeed or 18)) % 360
+			elseif logoFxOn("Tilt") then
+				logoFxTarget.Rotation = math.sin(t * 1.5) * (SETTINGS.LogoTiltAmount or 4)
+			end
+
+			-- Floating.
+			if logoFxOn("Floating") and logoBasePosition then
+				logoFxTarget.Position = UDim2.new(
+					logoBasePosition.X.Scale,
+					logoBasePosition.X.Offset,
+					logoBasePosition.Y.Scale,
+					logoBasePosition.Y.Offset + math.sin(t*1.3) * (SETTINGS.LogoFloatingAmount or 2)
+				)
+			elseif logoBasePosition then
+				logoFxTarget.Position = logoBasePosition
+			end
+
+			-- Color cycling.
+			if logoFxOn("ColorCycling") and logoFxTarget:IsA("ImageLabel") then
+				local h = (t * 0.055) % 1
+				logoFxTarget.ImageColor3 = Color3.fromHSV(0.07 + h*0.12, 0.25 + math.sin(t)*0.12, 1)
+			end
+
+			-- Glow pulse.
+			if logoGlowFx then
+				local stroke = logoGlowFx:FindFirstChildOfClass("UIStroke")
+				if stroke then
+					local pulse = logoFxOn("GlowPulse") and (0.2 + (math.sin(t*2)+1)*0.25) or 0.35
+					stroke.Transparency = math.clamp(pulse,0.05,0.9)
+				end
+			end
+
+			-- Counter/independent ring rotation.
+			if outerRing then
+				if logoFxOn("RingRotation") or logoFxOn("CounterRotation") then
+					outerRing.Rotation = (t * 45) % 360
+				end
+			end
+
+			-- Sweep.
+			if sweep then
+				sweep.Position = UDim2.fromScale(-0.3 + ((t*0.45)%1.6), -0.25)
+			end
+
+			-- Scanline.
+			if scanline then
+				scanline.Position = UDim2.fromScale(0, -0.1 + ((t*0.55)%1.2))
+			end
+
+			-- Aura.
+			if aura then
+				local a = 1 + (math.sin(t*2)+1)*0.10
+				aura.Size = UDim2.new(1,a*8,1,a*8)
+				aura.Position = UDim2.new(0,-a*4,0,-a*4)
+				aura.BackgroundTransparency = 0.80 + (math.sin(t*2)+1)*0.07
+			end
+
+			-- Ripple and shockwave periodically expand.
+			if ripple then
+				local phase = t % 2.4
+				local p = phase / 2.4
+				ripple.Size = UDim2.new(0,4+p*70,0,4+p*70)
+				ripple.Position = UDim2.new(0.5,-2-p*35,0.5,-2-p*35)
+				local st = ripple:FindFirstChildOfClass("UIStroke")
+				if st then st.Transparency = p end
+			end
+			if shockwave then
+				local phase = (t + 1.2) % 3.0
+				local p = phase / 3.0
+				shockwave.Size = UDim2.new(0,3+p*85,0,3+p*85)
+				shockwave.Position = UDim2.new(0.5,-1.5-p*42.5,0.5,-1.5-p*42.5)
+				local st = shockwave:FindFirstChildOfClass("UIStroke")
+				if st then st.Transparency = p end
+			end
+
+			-- Orbiting particles.
+			for i,p in ipairs(orbitParticles) do
+				local a = t*1.5 + (i/#orbitParticles)*math.pi*2
+				local r = 0.5 + 0.08*math.sin(t*2+i)
+				p.Position = UDim2.new(0.5 + math.cos(a)*r, -1.5, 0.5 + math.sin(a)*r, -1.5)
+			end
+
+			-- Sparkle flashes.
+			if #sparkles > 0 and t - lastSpark > 0.28 then
+				lastSpark = t
+				for i,s in ipairs(sparkles) do
+					s.BackgroundTransparency = rng:NextNumber(0.15,0.75)
+				end
+			end
+			for i,s in ipairs(sparkles) do
+				s.BackgroundTransparency = math.min(1, s.BackgroundTransparency + dt*2.2)
+			end
+
+			-- Particle burst.
+			if #burstParticles > 0 and t - lastBurst > 2.5 then
+				lastBurst = t
+				for i,p in ipairs(burstParticles) do
+					local a = (i/#burstParticles)*math.pi*2
+					local r = rng:NextNumber(0.05,0.18)
+					p:SetAttribute("BurstX", math.cos(a)*r)
+					p:SetAttribute("BurstY", math.sin(a)*r)
+					p:SetAttribute("BurstStart", t)
+					p.BackgroundTransparency = 0.05
+				end
+			end
+			for i,p in ipairs(burstParticles) do
+				local start = p:GetAttribute("BurstStart")
+				if start then
+					local q = math.clamp((t-start)/0.8,0,1)
+					local bx = p:GetAttribute("BurstX") or 0
+					local by = p:GetAttribute("BurstY") or 0
+					p.Position = UDim2.fromScale(0.5+bx*q,0.5+by*q)
+					p.BackgroundTransparency = q
+				end
+			end
+
+			-- Trail afterimages.
+			for i,tr in ipairs(trailImages) do
+				tr.ImageTransparency = 0.78 + i*0.06
+				tr.Position = UDim2.new(
+					logoFxTarget.Position.X.Scale,
+					logoFxTarget.Position.X.Offset - i*2,
+					logoFxTarget.Position.Y.Scale,
+					logoFxTarget.Position.Y.Offset
+				)
+				tr.Rotation = logoFxTarget.Rotation - i*3
+			end
+
+			-- Electric arcs flicker.
+			for i,a in ipairs(arcs) do
+				a.Visible = math.sin(t*14+i*2.3) > 0.25
+				a.Rotation = i*60 + math.sin(t*8+i)*12
+				a.Position = UDim2.new(0.5 + math.cos(i)*0.35,-6,0.5 + math.sin(i)*0.35,-1)
+			end
+
+			-- Glitch + chromatic split: brief visual distortion.
+			if logoFxOn("Glitch") and math.random() < dt*3.5 then
+				logoFxTarget.Position = UDim2.new(
+					logoBasePosition.X.Scale,
+					logoBasePosition.X.Offset + rng:NextInteger(-2,2),
+					logoBasePosition.Y.Scale,
+					logoBasePosition.Y.Offset + rng:NextInteger(-2,2)
+				)
+			end
+
+			if logoFxOn("ChromaticSplit") and logoFxTarget:IsA("ImageLabel") then
+				logoFxTarget.ImageColor3 = Color3.fromRGB(
+					255,
+					200 + math.floor(math.sin(t*16)*30),
+					150 + math.floor(math.sin(t*13)*40)
+				)
+			end
+		end)
+	end
+
+
 	--==================================================
 	-- PLAYER NAME
 	--==================================================
@@ -1620,3 +2394,99 @@ end
 Players.PlayerAdded:Connect(function(player)
 	setupPlayer(player)
 end)
+
+	-- Overlay animation controller.
+	local overlayTime = math.random() * 100
+	local overlayConnections
+	overlayConnections = RunService.RenderStepped:Connect(function(dt)
+		if not overlayFolder.Parent then
+			overlayConnections:Disconnect()
+			return
+		end
+
+		if not overlayConfig.Enabled then
+			return
+		end
+
+		overlayTime += dt * speed
+		local t = overlayTime
+
+		-- Animate gradients.
+		for _, obj in ipairs(overlayObjects) do
+			local g = obj:FindFirstChildOfClass("UIGradient")
+			if g then
+				g.Rotation = (g.Rotation + dt * speed * 45) % 360
+			end
+		end
+
+		if typeName == "RainbowPulse" then
+			overlayFolder.BackgroundTransparency = 0.55 + math.sin(t * 2) * 0.18
+		elseif typeName == "EnergyPulse" then
+			local f = overlayFolder:FindFirstChild("Energy")
+			if f then
+				f.Position = UDim2.fromScale(-0.4 + ((t * 0.55) % 1.4), 0)
+			end
+		elseif typeName == "Scanline" then
+			local f = overlayFolder:FindFirstChild("Scanline")
+			if f then
+				f.Position = UDim2.fromScale(-0.02 + ((t * 0.65) % 1.04), 0)
+			end
+		elseif typeName == "LaserSweep" then
+			local f = overlayFolder:FindFirstChild("Laser")
+			if f then
+				f.Position = UDim2.fromScale(-0.08 + ((t * 0.75) % 1.16), 0)
+			end
+		elseif typeName == "ChromeSweep" or typeName == "GlassSweep"
+			or typeName == "DiamondShine" or typeName == "Gloss" then
+			local name = typeName == "ChromeSweep" and "Chrome"
+				or typeName == "GlassSweep" and "Glass"
+				or typeName == "DiamondShine" and "Diamond"
+				or "Gloss"
+			local f = overlayFolder:FindFirstChild(name)
+			if f then
+				f.Position = UDim2.fromScale(-0.4 + ((t * 0.35) % 1.4), 0)
+			end
+		elseif typeName == "Prism" or typeName == "SpeedLines" then
+			local prefix = typeName == "Prism" and "Prism" or "Speed"
+			for i = 1, 7 do
+				local f = overlayFolder:FindFirstChild(prefix..i)
+				if f then
+					f.Position = UDim2.fromScale(-0.5 + ((t * (0.25 + i*0.035)) % 1.8), 0)
+				end
+			end
+		elseif typeName == "Electric" then
+			for i = 1, 3 do
+				local f = overlayFolder:FindFirstChild("Electric"..i)
+				if f then
+					f.Visible = math.sin(t * 12 + i * 2.1) > 0.15
+				end
+			end
+		elseif typeName == "Glitch" then
+			for i = 1, 3 do
+				local f = overlayFolder:FindFirstChild("Glitch"..i)
+				if f then
+					f.Position = UDim2.fromScale(
+						(math.sin(t*17+i)*0.03),
+						0.15*i + math.sin(t*23+i)*0.025
+					)
+					f.Visible = math.sin(t * 19 + i) > 0.55
+				end
+			end
+		elseif typeName == "Static" then
+			for i = 1, 9 do
+				local f = overlayFolder:FindFirstChild("Static"..i)
+				if f then
+					f.Visible = math.random() > 0.18
+					f.BackgroundTransparency = 0.82 + math.random() * 0.14
+				end
+			end
+		elseif typeName == "Starlight" then
+			for i = 1, 7 do
+				local f = overlayFolder:FindFirstChild("Star"..i)
+				if f then
+					f.BackgroundTransparency = 0.15 + math.abs(math.sin(t * 2.5 + i)) * 0.75
+				end
+			end
+		end
+	end)
+
