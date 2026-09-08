@@ -135,6 +135,10 @@ local SETTINGS = {
 	OwnerRingEnabled = true,
 	OwnerRingRotateSpeed = 45,
 
+	-- OWNER RAINBOW NAME
+	OwnerRainbowNameEnabled = true,
+	OwnerRainbowNameSpeed = 1.2,
+
 	-- RAINBOW BANNER BORDER
 	RainbowBannerEnabled = true,
 	RainbowBannerSpeed = 70, -- smooth continuous movement
@@ -887,6 +891,25 @@ local function createNametag(player, character)
 	nameLabel.TextStrokeColor3 = SETTINGS.Orange
 	nameLabel.TextStrokeTransparency = 0.15
 
+	-- OWNER ONLY: moving rainbow across the player's name.
+	-- UIGradient is applied directly to the TextLabel so the colors
+	-- follow the letters instead of affecting the banner border.
+	local ownerNameGradient = Instance.new("UIGradient")
+	ownerNameGradient.Name = "OwnerRainbowName"
+	ownerNameGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 120, 0)),
+		ColorSequenceKeypoint.new(0.32, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(0, 255, 70)),
+		ColorSequenceKeypoint.new(0.64, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.80, Color3.fromRGB(70, 100, 255)),
+		ColorSequenceKeypoint.new(0.92, Color3.fromRGB(180, 0, 255)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 180)),
+	})
+	ownerNameGradient.Offset = Vector2.new(-1, 0)
+	ownerNameGradient.Enabled = (getRole(player) == "OWNER") and SETTINGS.OwnerRainbowNameEnabled
+	ownerNameGradient.Parent = nameLabel
+
 	nameLabel.ZIndex = 3
 	nameLabel.Parent = panel
 
@@ -1230,6 +1253,20 @@ local function createNametag(player, character)
 		end
 
 		--==================================================
+		-- OWNER RAINBOW NAME
+		--==================================================
+
+		if ownerNameGradient then
+			if getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled then
+				ownerNameGradient.Enabled = true
+				local rainbowOffset = ((time * SETTINGS.OwnerRainbowNameSpeed) % 2) - 1
+				ownerNameGradient.Offset = Vector2.new(rainbowOffset, 0)
+			else
+				ownerNameGradient.Enabled = false
+			end
+		end
+
+		--==================================================
 		-- STAR ROTATION
 		--==================================================
 
@@ -1500,3 +1537,4 @@ end
 Players.PlayerAdded:Connect(function(player)
 	setupPlayer(player)
 end)
+
