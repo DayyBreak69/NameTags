@@ -54,6 +54,7 @@ local SETTINGS = {
 			Role = "Admin",
 			DisplayName = "Haylee",
 			Banner = "Haylee.png",
+			Border = "NeonPink",
 			BackgroundTransparency = 0.05,
 		},
 
@@ -182,6 +183,13 @@ local SETTINGS = {
 	RainbowBannerThickness = 3,
 	RainbowBannerGlowThickness = 6,
 	RainbowBannerOuterGlowThickness = 10,
+
+	-- Per-player border styles:
+	-- "Rainbow" (default for the existing rainbow setup)
+	-- "NeonPink" (clean pink glow)
+	-- "None" (no procedural border)
+	NeonPink = Color3.fromRGB(255, 20, 170),
+	NeonPinkGlow = Color3.fromRGB(255, 90, 210),
 
 	-- Floating
 	FloatingEnabled = true,
@@ -712,6 +720,33 @@ local function createNametag(player, character)
 	panelStroke.Color = SETTINGS.OrangeBright
 	panelStroke.Transparency = 0.15
 	panelStroke.Parent = panel
+
+	--==================================================
+	-- PLAYER BORDER STYLE
+	--==================================================
+
+	local tagConfig = getTagConfig(player)
+	local borderStyle = tostring(tagConfig.Border or "Rainbow")
+
+	-- Neon Pink is a clean UIStroke border: no segments, particles,
+	-- moving bars, or banner overlay objects.
+	if borderStyle == "NeonPink" then
+		local neonBorder = Instance.new("UIStroke")
+		neonBorder.Name = "NeonPinkBorder"
+		neonBorder.Thickness = 3
+		neonBorder.Color = SETTINGS.NeonPink
+		neonBorder.Transparency = 0.02
+		neonBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		neonBorder.Parent = panel
+
+		local neonGlow = Instance.new("UIStroke")
+		neonGlow.Name = "NeonPinkGlow"
+		neonGlow.Thickness = 7
+		neonGlow.Color = SETTINGS.NeonPinkGlow
+		neonGlow.Transparency = 0.72
+		neonGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		neonGlow.Parent = panel
+	end
 
 	--==================================================
 	-- PROCEDURAL RAINBOW BORDER AROUND THE OUTSIDE
@@ -1586,7 +1621,7 @@ local function createNametag(player, character)
 
 		buildRainbowBorder()
 
-		if SETTINGS.RainbowBannerEnabled then
+		if SETTINGS.RainbowBannerEnabled and borderStyle == "Rainbow" then
 			rainbowContainer.Visible = true
 			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
 			for i, data in ipairs(rainbowSegments) do
