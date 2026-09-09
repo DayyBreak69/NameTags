@@ -22,6 +22,7 @@ _G.__DayBreakNametagConnections = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
+local PlayerGui = localPlayer:WaitForChild("PlayerGui")
 
 --==================================================
 -- SETTINGS
@@ -556,11 +557,39 @@ end
 -- REMOVE OLD TAG
 --==================================================
 
+local function removePlayerGuiNametagsForCharacter(character)
+	if not character then
+		return
+	end
+
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return
+	end
+
+	-- BillboardGuis are parented to PlayerGui so their GuiObjects receive
+	-- mouse input reliably. Match by Adornee so we only remove this player's tag.
+	for _, child in ipairs(PlayerGui:GetChildren()) do
+		if child:IsA("BillboardGui") and child.Adornee == head then
+			local name = tostring(child.Name)
+			if name == "CustomDayBreakNametag"
+				or name == "DayBreakCircleLogo"
+				or name == "DayBreakNametag"
+			or name == "DayBreakNameTag"
+			or name == "DayBreakLogo" then
+				child:Destroy()
+			end
+		end
+	end
+end
+
 local function removeNametag(character)
 
 	if not character then
 		return
 	end
+
+	removePlayerGuiNametagsForCharacter(character)
 
 	local oldConnection = NametagConnections[character]
 	if oldConnection then
@@ -656,7 +685,9 @@ local function createNametag(player, character)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = SETTINGS.MaxDistance
 	billboard.ResetOnSpawn = false
-	billboard.Parent = character
+	billboard:SetAttribute("DayBreakTargetUserId", player.UserId)
+	billboard:SetAttribute("DayBreakOwnerGeneration", __DAYBREAK_GENERATION)
+	billboard.Parent = PlayerGui
 
 	--==================================================
 	-- OUTER CHROME
@@ -1183,9 +1214,20 @@ local function createNametag(player, character)
 		friendClickButton.ZIndex = 100
 		friendClickButton.Parent = billboard
 
-		friendClickButton.MouseButton1Click:Connect(function()
+		local clickLock = false
+		local function doTeleport()
+			if clickLock then
+				return
+			end
+			clickLock = true
 			teleportToPlayerInstantly(player)
-		end)
+			task.delay(0.15, function()
+				clickLock = false
+			end)
+		end
+
+		friendClickButton.Activated:Connect(doTeleport)
+		friendClickButton.MouseButton1Click:Connect(doTeleport)
 	end
 
 	--==================================================
@@ -1208,7 +1250,9 @@ local function createNametag(player, character)
 	logoBillboard.MaxDistance = SETTINGS.MaxDistance
 	logoBillboard.ResetOnSpawn = false
 	logoBillboard.Enabled = false
-	logoBillboard.Parent = character
+	logoBillboard:SetAttribute("DayBreakTargetUserId", player.UserId)
+	logoBillboard:SetAttribute("DayBreakOwnerGeneration", __DAYBREAK_GENERATION)
+	logoBillboard.Parent = PlayerGui
 
 	-- Make the distant circular tag clickable too.
 	if isClickableFriend(player) then
@@ -1225,9 +1269,20 @@ local function createNametag(player, character)
 		distantClickButton.ZIndex = 100
 		distantClickButton.Parent = logoBillboard
 
-		distantClickButton.MouseButton1Click:Connect(function()
+		local distantClickLock = false
+		local function doDistantTeleport()
+			if distantClickLock then
+				return
+			end
+			distantClickLock = true
 			teleportToPlayerInstantly(player)
-		end)
+			task.delay(0.15, function()
+				distantClickLock = false
+			end)
+		end
+
+		distantClickButton.Activated:Connect(doDistantTeleport)
+		distantClickButton.MouseButton1Click:Connect(doDistantTeleport)
 	end
 
 	--==================================================
