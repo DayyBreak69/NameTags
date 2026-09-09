@@ -153,7 +153,7 @@ local SETTINGS = {
 	-- CLICKABLE FRIEND TAGS
 	-- LOGO EFFECT SYSTEM
 	-- All 26 effects are available. Enable only the ones you want.
-	LogoEffectsEnabled = false,
+	LogoEffectsEnabled = true,
 	LogoEffectsSpeed = 1,
 	LogoEffects = {
 		"Pulse",
@@ -1723,14 +1723,14 @@ local function createNametag(player, character)
 		-- CATLOGO ROTATION
 		--==================================================
 
-		-- Logo rotation is controlled only by the logo effect system.
-		if logoFxOn("Rotation") then
-			local r = (time * SETTINGS.LogoRotationSpeed * logoFxSpeed) % 360
+		-- CATLOGO ROTATION
+		-- Keep this independent from the optional logo-effect list so the
+		-- catlogo continues rotating even if other effects are disabled.
+		if SETTINGS.LogoRotateEnabled then
+			local rotateSpeed = tonumber(SETTINGS.LogoRotateSpeed) or 20
+			local r = (time * rotateSpeed) % 360
 			logoVisual.Rotation = r
 			distantLogoVisual.Rotation = r
-		else
-			logoVisual.Rotation = 0
-			distantLogoVisual.Rotation = 0
 		end
 
 		--==================================================
