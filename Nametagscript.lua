@@ -68,6 +68,7 @@ local SETTINGS = {
 			Role = "Admin",
 			DisplayName = "Nigger",
 			Banner = "Gummies1.png",
+			Border = "WhiteGlow",
 			BackgroundTransparency = 0.05,
 		},
 
@@ -747,6 +748,23 @@ local function createNametag(player, character)
 		neonGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		neonGlow.Parent = panel
 	end
+
+	elseif borderStyle == "WhiteGlow" then
+		local whiteBorder = Instance.new("UIStroke")
+		whiteBorder.Name = "WhiteGlowBorder"
+		whiteBorder.Thickness = 3
+		whiteBorder.Color = Color3.fromRGB(255, 255, 255)
+		whiteBorder.Transparency = 0.02
+		whiteBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		whiteBorder.Parent = panel
+
+		local whiteGlow = Instance.new("UIStroke")
+		whiteGlow.Name = "WhiteGlow"
+		whiteGlow.Thickness = 8
+		whiteGlow.Color = Color3.fromRGB(255, 255, 255)
+		whiteGlow.Transparency = 0.72
+		whiteGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		whiteGlow.Parent = panel
 
 	--==================================================
 	-- PROCEDURAL RAINBOW BORDER AROUND THE OUTSIDE
