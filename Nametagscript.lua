@@ -749,7 +749,7 @@ local function createNametag(player, character)
 		neonGlow.Parent = panel
 	end
 
-	elseif borderStyle == "WhiteGlow" then
+	if borderStyle == "WhiteGlow" then
 		local whiteBorder = Instance.new("UIStroke")
 		whiteBorder.Name = "WhiteGlowBorder"
 		whiteBorder.Thickness = 3
@@ -765,6 +765,7 @@ local function createNametag(player, character)
 		whiteGlow.Transparency = 0.72
 		whiteGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		whiteGlow.Parent = panel
+	end
 
 	--==================================================
 	-- PROCEDURAL RAINBOW BORDER AROUND THE OUTSIDE
