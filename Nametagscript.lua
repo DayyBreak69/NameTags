@@ -7,6 +7,18 @@
 _G.__DayBreakNametagGeneration = (_G.__DayBreakNametagGeneration or 0) + 1
 local __DAYBREAK_GENERATION = _G.__DayBreakNametagGeneration
 
+-- Disconnect connections owned by the previous execution when this script
+-- supports the shared cleanup registry. This keeps repeated executor runs clean.
+_G.__DayBreakNametagConnections = _G.__DayBreakNametagConnections or {}
+for _, oldConnection in pairs(_G.__DayBreakNametagConnections) do
+	pcall(function()
+		if oldConnection and oldConnection.Disconnect then
+			oldConnection:Disconnect()
+		end
+	end)
+end
+_G.__DayBreakNametagConnections = {}
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
@@ -178,7 +190,7 @@ local SETTINGS = {
 	LogoTiltAmount = 4,
 
 
-	-- RAINBOW BANNER BORDER
+	-- PER-PLAYER BORDER SYSTEM
 	RainbowBannerEnabled = true,
 	RainbowBannerSpeed = 18, -- smooth continuous movement
 	RainbowBannerThickness = 3,
@@ -188,9 +200,11 @@ local SETTINGS = {
 	-- Per-player border styles:
 	-- "Rainbow" (default for the existing rainbow setup)
 	-- "NeonPink" (clean pink glow)
+	-- "WhiteGlow" (clean white glow)
 	-- "None" (no procedural border)
 	NeonPink = Color3.fromRGB(255, 20, 170),
 	NeonPinkGlow = Color3.fromRGB(255, 90, 210),
+	WhiteGlow = Color3.fromRGB(255, 255, 255),
 
 	-- Floating
 	FloatingEnabled = true,
@@ -210,6 +224,8 @@ local REGISTRY_POLL_SECONDS = 5
 
 local ActivePlayers = {}
 local registryOnline = false
+local NametagConnections = {}
+local CreatingNametags = setmetatable({}, {__mode = "k"})
 
 local function httpRequest(options)
 	local requestFunction =
@@ -546,6 +562,13 @@ local function removeNametag(character)
 		return
 	end
 
+	local oldConnection = NametagConnections[character]
+	if oldConnection then
+		pcall(function() oldConnection:Disconnect() end)
+		NametagConnections[character] = nil
+		_G.__DayBreakNametagConnections[character] = nil
+	end
+
 	-- Clean up tags left behind by previous versions of this script.
 	-- Earlier builds used several different BillboardGui names, so removing
 	-- only "CustomDayBreakNametag" could leave an old overlay/sweep alive.
@@ -593,6 +616,13 @@ local function createNametag(player, character)
 		return
 	end
 
+	-- Prevent overlapping task.spawn calls from creating two tags/connections
+	-- for the same character during registry/respawn races.
+	if CreatingNametags[character] then
+		return
+	end
+	CreatingNametags[character] = true
+
 	local head = character:FindFirstChild("Head")
 
 	if not head then
@@ -600,6 +630,7 @@ local function createNametag(player, character)
 	end
 
 	if not head then
+		CreatingNametags[character] = nil
 		return
 	end
 
@@ -611,7 +642,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "BannerOverlayV2")
+	billboard:SetAttribute("DayBreakNametagVersion", "CleanBorderV3")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -726,7 +757,6 @@ local function createNametag(player, character)
 	-- PLAYER BORDER STYLE
 	--==================================================
 
-	local tagConfig = getTagConfig(player)
 	local borderStyle = tostring(tagConfig.Border or "Rainbow")
 
 	-- Neon Pink is a clean UIStroke border: no segments, particles,
@@ -753,7 +783,7 @@ local function createNametag(player, character)
 		local whiteBorder = Instance.new("UIStroke")
 		whiteBorder.Name = "WhiteGlowBorder"
 		whiteBorder.Thickness = 3
-		whiteBorder.Color = Color3.fromRGB(255, 255, 255)
+		whiteBorder.Color = SETTINGS.WhiteGlow
 		whiteBorder.Transparency = 0.02
 		whiteBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		whiteBorder.Parent = panel
@@ -761,7 +791,7 @@ local function createNametag(player, character)
 		local whiteGlow = Instance.new("UIStroke")
 		whiteGlow.Name = "WhiteGlow"
 		whiteGlow.Thickness = 8
-		whiteGlow.Color = Color3.fromRGB(255, 255, 255)
+		whiteGlow.Color = SETTINGS.WhiteGlow
 		whiteGlow.Transparency = 0.72
 		whiteGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		whiteGlow.Parent = panel
@@ -782,6 +812,7 @@ local function createNametag(player, character)
 	rainbowContainer.Position = UDim2.fromScale(0, 0)
 	rainbowContainer.ClipsDescendants = false
 	rainbowContainer.ZIndex = 50
+	rainbowContainer.Visible = (borderStyle == "Rainbow")
 	rainbowContainer.Parent = billboard
 
 	local rainbowSegments = {}
@@ -1535,11 +1566,19 @@ local function createNametag(player, character)
 
 		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
 			if connection then connection:Disconnect() end
+			if NametagConnections[character] == connection then
+				NametagConnections[character] = nil
+				_G.__DayBreakNametagConnections[character] = nil
+			end
 			return
 		end
 
 		if not character or not character.Parent or not head or not head.Parent then
 			if connection then connection:Disconnect() end
+			if NametagConnections[character] == connection then
+				NametagConnections[character] = nil
+				_G.__DayBreakNametagConnections[character] = nil
+			end
 			return
 		end
 
@@ -1952,6 +1991,9 @@ local function createNametag(player, character)
 			)
 	end)
 
+	NametagConnections[character] = connection
+	_G.__DayBreakNametagConnections[character] = connection
+	CreatingNametags[character] = nil
 end
 
 --==================================================
