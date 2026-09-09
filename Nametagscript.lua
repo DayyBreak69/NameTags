@@ -202,8 +202,8 @@ local SETTINGS = {
 	-- "NeonPink" (clean pink glow)
 	-- "WhiteGlow" (clean white glow)
 	-- "None" (no procedural border)
-	NeonPink = Color3.fromRGB(255, 20, 170),
-	NeonPinkGlow = Color3.fromRGB(255, 90, 210),
+	NeonPink = Color3.fromRGB(255, 0, 190),
+	NeonPinkGlow = Color3.fromRGB(255, 40, 220),
 	WhiteGlow = Color3.fromRGB(255, 255, 255),
 
 	-- Floating
@@ -757,7 +757,7 @@ local function createNametag(player, character)
 	if borderStyle == "NeonPink" then
 		local neonBorder = Instance.new("UIStroke")
 		neonBorder.Name = "NeonPinkBorder"
-		neonBorder.Thickness = 3
+		neonBorder.Thickness = 4
 		neonBorder.Color = SETTINGS.NeonPink
 		neonBorder.Transparency = 0.02
 		neonBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -765,9 +765,9 @@ local function createNametag(player, character)
 
 		local neonGlow = Instance.new("UIStroke")
 		neonGlow.Name = "NeonPinkGlow"
-		neonGlow.Thickness = 7
+		neonGlow.Thickness = 10
 		neonGlow.Color = SETTINGS.NeonPinkGlow
-		neonGlow.Transparency = 0.72
+		neonGlow.Transparency = 0.45
 		neonGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		neonGlow.Parent = panel
 	end
