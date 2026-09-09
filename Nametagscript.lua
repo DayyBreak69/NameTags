@@ -151,7 +151,6 @@ local SETTINGS = {
 	OwnerRainbowNameSpeed = 45,
 
 	-- CLICKABLE FRIEND TAGS
-	ClickableFriendTagsEnabled = true,
 	-- LOGO EFFECT SYSTEM
 	-- All 26 effects are available. Enable only the ones you want.
 	LogoEffectsEnabled = false,
@@ -501,43 +500,6 @@ local function getTagConfig(player)
 		or SETTINGS.PlayerTags[player.Name]
 		or {}
 end
-
-local function isClickableFriend(player)
-	-- Only configured non-local players are treated as clickable friends.
-	-- Your own nametag is never clickable.
-	if player == localPlayer then
-		return false
-	end
-
-	return SETTINGS.ClickableFriendTagsEnabled
-		and (SETTINGS.PlayerTags[player.UserId] ~= nil
-			or SETTINGS.PlayerTags[player.Name] ~= nil)
-end
-
-local function teleportToPlayerInstantly(targetPlayer)
-	if not targetPlayer or targetPlayer == localPlayer then
-		return
-	end
-
-	local myCharacter = localPlayer.Character
-	local targetCharacter = targetPlayer.Character
-
-	if not myCharacter or not targetCharacter then
-		return
-	end
-
-	local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
-	if not targetRoot then
-		return
-	end
-
-	-- Option A: instant teleport directly to their exact position.
-	myCharacter:PivotTo(targetRoot.CFrame)
-end
-
---==================================================
--- CUSTOM DISPLAY NAME
---==================================================
 
 local function getNametagName(player)
 	local config = getTagConfig(player)
@@ -1195,40 +1157,6 @@ local function createNametag(player, character)
 	highlightCorner.CornerRadius = UDim.new(1, 0)
 	highlightCorner.Parent = highlight
 
-	--==================================================
-	-- CLICKABLE FRIEND TAG
-	--==================================================
-	-- Invisible button over the full nametag.
-	-- Your own tag is excluded by isClickableFriend().
-	if isClickableFriend(player) then
-		local friendClickButton = Instance.new("TextButton")
-		friendClickButton.Name = "FriendTeleportButton"
-		friendClickButton.Size = UDim2.fromScale(1, 1)
-		friendClickButton.Position = UDim2.fromScale(0, 0)
-		friendClickButton.BackgroundTransparency = 1
-		friendClickButton.BorderSizePixel = 0
-		friendClickButton.Text = ""
-		friendClickButton.AutoButtonColor = false
-		friendClickButton.Active = true
-		friendClickButton.Selectable = false
-		friendClickButton.ZIndex = 100
-		friendClickButton.Parent = billboard
-
-		local clickLock = false
-		local function doTeleport()
-			if clickLock then
-				return
-			end
-			clickLock = true
-			teleportToPlayerInstantly(player)
-			task.delay(0.15, function()
-				clickLock = false
-			end)
-		end
-
-		friendClickButton.Activated:Connect(doTeleport)
-		friendClickButton.MouseButton1Click:Connect(doTeleport)
-	end
 
 	--==================================================
 	-- CIRCLE-ONLY BILLBOARD
@@ -1253,37 +1181,6 @@ local function createNametag(player, character)
 	logoBillboard:SetAttribute("DayBreakTargetUserId", player.UserId)
 	logoBillboard:SetAttribute("DayBreakOwnerGeneration", __DAYBREAK_GENERATION)
 	logoBillboard.Parent = PlayerGui
-
-	-- Make the distant circular tag clickable too.
-	if isClickableFriend(player) then
-		local distantClickButton = Instance.new("TextButton")
-		distantClickButton.Name = "FriendTeleportButton"
-		distantClickButton.Size = UDim2.fromScale(1, 1)
-		distantClickButton.Position = UDim2.fromScale(0, 0)
-		distantClickButton.BackgroundTransparency = 1
-		distantClickButton.BorderSizePixel = 0
-		distantClickButton.Text = ""
-		distantClickButton.AutoButtonColor = false
-		distantClickButton.Active = true
-		distantClickButton.Selectable = false
-		distantClickButton.ZIndex = 100
-		distantClickButton.Parent = logoBillboard
-
-		local distantClickLock = false
-		local function doDistantTeleport()
-			if distantClickLock then
-				return
-			end
-			distantClickLock = true
-			teleportToPlayerInstantly(player)
-			task.delay(0.15, function()
-				distantClickLock = false
-			end)
-		end
-
-		distantClickButton.Activated:Connect(doDistantTeleport)
-		distantClickButton.MouseButton1Click:Connect(doDistantTeleport)
-	end
 
 	--==================================================
 	-- LOGO CIRCLE
