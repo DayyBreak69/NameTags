@@ -19,7 +19,8 @@
     "rightright_r": {
       "Banner": "rightright_r_banner_20260911134228.png",
       "Role": "ADMIN",
-      "Logo": "rightright_r_logo_20260911134429.png"
+      "Logo": "rightright_r_logo_20260911134429.png",
+      "Border": "Black"
     }
   }
 }
