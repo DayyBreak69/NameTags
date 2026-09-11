@@ -426,9 +426,11 @@ local function downloadBanner(filename)
 	-- Fresh local filename prevents the executor from reusing an older banner.
 	-- Keep a stable local cache so a nametag rebuild does not briefly show
 	-- the black panel while the banner is downloaded again.
+	-- Use a per-execution cache filename so a bad/stale local banner
+	-- can never permanently replace a newer GitHub banner.
 	local localPath =
 		BANNER_FOLDER .. "/" ..
-		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. ".png"
+		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. BANNER_SESSION .. ".png"
 
 	-- If this banner was already downloaded during a previous tag rebuild,
 	-- load it immediately instead of hitting GitHub again.
@@ -452,28 +454,36 @@ local function downloadBanner(filename)
 		pcall(makefolder, BANNER_FOLDER)
 	end
 
-	local url = BANNER_BASE_URL .. safeName
+	-- Try jsDelivr first, then GitHub Raw. The query string makes each
+	-- execution request a fresh copy instead of reusing a stale CDN response.
+	local urls = {
+		"https://cdn.jsdelivr.net/gh/DayyBreak69/NameTags@main/banners/" .. safeName
+			.. "?cb=" .. BANNER_SESSION,
+		BANNER_BASE_URL .. safeName .. "?cb=" .. BANNER_SESSION,
+	}
+
 	local body = nil
 
-	-- First try game:HttpGet. Do not inspect the binary contents here;
-	-- valid PNG binary data can be represented differently by executors.
-	local okHttp, httpBody = pcall(function()
-		return game:HttpGet(url)
-	end)
-
-	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
-		body = httpBody
-	end
-
-	-- Fallback to executor HTTP request.
-	if not body then
+	for _, url in ipairs(urls) do
 		local result = httpRequest({
 			Url = url,
 			Method = "GET",
 		})
 
-		if result and tonumber(result.StatusCode) == 200 and type(result.Body) == "string" then
+		if result and tonumber(result.StatusCode) == 200
+			and type(result.Body) == "string"
+			and #result.Body > 0 then
 			body = result.Body
+			break
+		end
+
+		local okHttp, httpBody = pcall(function()
+			return game:HttpGet(url)
+		end)
+
+		if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+			body = httpBody
+			break
 		end
 	end
 
@@ -1089,7 +1099,7 @@ local function createNametag(player, character)
 			backgroundImage.ScaleType = Enum.ScaleType.Stretch
 			backgroundImage.ImageColor3 = Color3.new(1, 1, 1)
 			backgroundImage.Visible = true
-			backgroundImage.ZIndex = 0
+			backgroundImage.ZIndex = 1
 			backgroundImage.Parent = panel
 			if bannerAnimation then
 				bannerAnimationController = setupSpriteAnimation(backgroundImage, bannerAnimation)
@@ -1325,7 +1335,10 @@ local function createNametag(player, character)
 		customLogo.BorderSizePixel = 0
 		-- Keep uploaded logos comfortably inside the circular logo area.
 		-- The logo itself is centered; the parent rotation root handles all rotation.
-		customLogo.Size = UDim2.fromScale(0.76, 0.76)
+		-- Fill the circular logo area. The starCircle itself clips the
+		-- artwork to a perfect circle, while ScaleType.Fit preserves the
+		-- uploaded image's aspect ratio.
+		customLogo.Size = UDim2.fromScale(1, 1)
 		customLogo.Position = UDim2.fromScale(0.5, 0.5)
 		customLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogo.Image = customLogoAsset
@@ -1333,7 +1346,7 @@ local function createNametag(player, character)
 		customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
 		customLogo.ZIndex = 3
 		customLogo.Visible = true
-		customLogo.ClipsDescendants = false
+		customLogo.ClipsDescendants = true
 		customLogo.Parent = logoVisual
 		if logoAnimation then
 			logoAnimationController = setupSpriteAnimation(customLogo, logoAnimation)
@@ -1343,9 +1356,6 @@ local function createNametag(player, character)
 		customLogoCorner.CornerRadius = UDim.new(1, 0)
 		customLogoCorner.Parent = customLogo
 
-		local customLogoAspect = Instance.new("UIAspectRatioConstraint")
-		customLogoAspect.AspectRatio = 1
-		customLogoAspect.Parent = customLogo
 	else
 		starGlow.Parent = logoVisual
 		star.Parent = logoVisual
@@ -1573,7 +1583,7 @@ local function createNametag(player, character)
 		customLogoDistant.Name = "customLogoDistant"
 		customLogoDistant.BackgroundTransparency = 1
 		customLogoDistant.BorderSizePixel = 0
-		customLogoDistant.Size = UDim2.fromScale(0.76, 0.76)
+		customLogoDistant.Size = UDim2.fromScale(1, 1)
 		customLogoDistant.Position = UDim2.fromScale(0.5, 0.5)
 		customLogoDistant.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogoDistant.Image = customLogoAsset
@@ -1581,7 +1591,7 @@ local function createNametag(player, character)
 		customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
 		customLogoDistant.ZIndex = 3
 		customLogoDistant.Visible = true
-		customLogoDistant.ClipsDescendants = false
+		customLogoDistant.ClipsDescendants = true
 		customLogoDistant.Parent = distantLogoVisual
 		if logoAnimation then
 			setupSpriteAnimation(customLogoDistant, logoAnimation)
@@ -1591,9 +1601,6 @@ local function createNametag(player, character)
 		customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
 		customLogoDistantCorner.Parent = customLogoDistant
 
-		local customLogoDistantAspect = Instance.new("UIAspectRatioConstraint")
-		customLogoDistantAspect.AspectRatio = 1
-		customLogoDistantAspect.Parent = customLogoDistant
 	else
 		logoGlow.Parent = distantLogoVisual
 		logoStar.Parent = distantLogoVisual
