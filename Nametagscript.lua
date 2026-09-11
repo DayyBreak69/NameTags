@@ -127,8 +127,8 @@ local SETTINGS = {
 			Banner = "Daybreak.png",
 
 			Logo = "Catlogo.png",
-			Border = "Rainbow",
-			NameColor = "Rainbow",
+			Border = "Gold",
+			NameColor = "Purple",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
