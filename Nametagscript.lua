@@ -615,7 +615,8 @@ local function fetchRemoteConfig()
 		return false, false
 	end
 
-	local body = httpGetText(REMOTE_CONFIG_URL)
+	local cacheBustedUrl = REMOTE_CONFIG_URL .. "?cb=" .. tostring(os.time())
+	local body = httpGetText(cacheBustedUrl)
 	if not body then
 		remoteConfigOnline = false
 		return false, false
