@@ -891,7 +891,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV11")
+	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV12")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1107,12 +1107,14 @@ local function createNametag(player, character)
 			borderGradient.Name = "RainbowBorderGradient"
 			borderGradient.Color = rainbowColors
 			borderGradient.Rotation = 0
+			borderGradient.TileMode = Enum.GradientTileMode.Repeat
 			borderGradient.Parent = borderStroke
 
 			borderGlowGradient = Instance.new("UIGradient")
 			borderGlowGradient.Name = "RainbowBorderGlowGradient"
 			borderGlowGradient.Color = rainbowColors
 			borderGlowGradient.Rotation = 0
+			borderGlowGradient.TileMode = Enum.GradientTileMode.Repeat
 			borderGlowGradient.Parent = borderGlow
 			return
 		end
@@ -1908,7 +1910,7 @@ local function createNametag(player, character)
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled and tostring(borderStyle):lower() == "rainbow" then
-			local offset = (time * SETTINGS.RainbowBannerSpeed * 0.0025) % 1
+			local offset = -((time * SETTINGS.RainbowBannerSpeed * 0.0025) % 1)
 			setRainbowBorderOffset(offset)
 		end
 
