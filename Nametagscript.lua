@@ -1083,11 +1083,18 @@ local function createNametag(player, character)
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
+	-- Match the exact same 0.88 visual scale as the main tag chrome.
+	-- The rainbow border lives directly under the BillboardGui, so without
+	-- its own UIScale it would remain at the old full 280x75 size.
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
-	rainbowContainer.Position = UDim2.fromScale(0, 0)
+	rainbowContainer.Position = UDim2.fromScale(0.5, 0.5)
+	rainbowContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	rainbowContainer.ClipsDescendants = false
 	rainbowContainer.ZIndex = 50
 	rainbowContainer.Visible = (borderStyle == "Rainbow")
+	local rainbowScale = Instance.new("UIScale")
+	rainbowScale.Scale = tonumber(SETTINGS.OverallTagScale) or 0.88
+	rainbowScale.Parent = rainbowContainer
 	rainbowContainer.Parent = billboard
 
 	local rainbowSegments = {}
