@@ -120,6 +120,42 @@ local NAMED_COLORS = {
 local namedBorderColors = NAMED_COLORS
 local namedNameColors = NAMED_COLORS
 
+--==================================================
+-- SAFE PRELOADED COLOR RESOLVER
+--==================================================
+-- This function intentionally owns its palette. It does not depend on a
+-- local variable declared inside createNametag(), preventing executor
+-- scope/order issues from ever making the palette nil.
+local function getPreloadedColor(value)
+	local requested = tostring(value or "")
+	local lower = requested:lower()
+
+	local colors = {
+		red = Color3.fromRGB(255, 60, 60),
+		crimson = Color3.fromRGB(220, 35, 55),
+		orange = Color3.fromRGB(255, 145, 40),
+		amber = Color3.fromRGB(255, 175, 35),
+		yellow = Color3.fromRGB(255, 225, 55),
+		lime = Color3.fromRGB(150, 255, 45),
+		green = Color3.fromRGB(60, 255, 110),
+		emerald = Color3.fromRGB(35, 210, 125),
+		cyan = Color3.fromRGB(40, 235, 255),
+		skyblue = Color3.fromRGB(70, 190, 255),
+		blue = Color3.fromRGB(70, 130, 255),
+		royalblue = Color3.fromRGB(55, 85, 235),
+		purple = Color3.fromRGB(170, 80, 255),
+		violet = Color3.fromRGB(125, 70, 255),
+		magenta = Color3.fromRGB(235, 55, 255),
+		pink = Color3.fromRGB(255, 70, 210),
+		rose = Color3.fromRGB(255, 80, 135),
+		white = Color3.fromRGB(255, 255, 255),
+		black = Color3.fromRGB(0, 0, 0),
+		gold = Color3.fromRGB(255, 195, 45),
+	}
+
+	return colors[lower]
+end
+
 local SETTINGS = {
 
 	-- Display
@@ -1102,20 +1138,6 @@ local function createNametag(player, character)
 	local borderGradient = nil
 	local borderGlowGradient = nil
 
-	local function getPreloadedColor(value)
-		local requested = tostring(value or "")
-		if NAMED_COLORS[requested] then
-			return NAMED_COLORS[requested]
-		end
-		local lower = requested:lower()
-		for name, color in pairs(NAMED_COLORS) do
-			if name:lower() == lower then
-				return color
-			end
-		end
-		return nil
-	end
-
 	local function parseBorderColor(value)
 		if typeof(value) == "Color3" then
 			return value
@@ -1180,7 +1202,7 @@ local function createNametag(player, character)
 
 		panelStroke.Enabled = true
 
-		local color = namedBorderColors[style]
+		local color = getPreloadedColor(style)
 			or parseBorderColor(tagConfig.BorderColor)
 			or (style:lower() == "whiteglow" and SETTINGS.WhiteGlow)
 			or (style:lower() == "neonpink" and SETTINGS.NeonPink)
