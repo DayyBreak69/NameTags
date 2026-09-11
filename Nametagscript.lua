@@ -19,6 +19,25 @@ for _, oldConnection in pairs(_G.__DayBreakNametagConnections) do
 end
 _G.__DayBreakNametagConnections = {}
 
+-- Shared player-lifecycle cleanup registry.
+-- CharacterAdded/CharacterRemoving connections must also be disconnected when
+-- this script is executed again, otherwise old handlers can recreate tags.
+_G.__DayBreakNametagPlayerConnections = _G.__DayBreakNametagPlayerConnections or {}
+for _, oldPlayerConnection in pairs(_G.__DayBreakNametagPlayerConnections) do
+	pcall(function()
+		if oldPlayerConnection and oldPlayerConnection.Disconnect then
+			oldPlayerConnection:Disconnect()
+		elseif type(oldPlayerConnection) == "table" then
+			for _, connection in pairs(oldPlayerConnection) do
+				if connection and connection.Disconnect then
+					connection:Disconnect()
+				end
+			end
+		end
+	end)
+end
+_G.__DayBreakNametagPlayerConnections = {}
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
@@ -712,26 +731,60 @@ end
 -- REMOVE OLD TAG
 --==================================================
 
+local function isDayBreakNametagGui(child)
+	if not child or not child:IsA("BillboardGui") then
+		return false
+	end
+
+	local name = tostring(child.Name)
+	return name == "CustomDayBreakNametag"
+		or name == "DayBreakCircleLogo"
+		or name == "DayBreakNametag"
+		or name == "DayBreakNameTag"
+		or name == "DayBreakLogo"
+		or name:find("DayBreak", 1, true) ~= nil
+		or name:find("Nametag", 1, true) ~= nil
+		or name:find("NameTag", 1, true) ~= nil
+		or name:find("CircleLogo", 1, true) ~= nil
+end
+
+-- BillboardGuis are parented to PlayerGui, so a dead character can disappear
+-- while its old BillboardGui remains alive. Cleanup therefore uses the
+-- DayBreakTargetUserId attribute, not only the current character/head.
+local function removeAllPlayerGuiNametags(player)
+	if not player then
+		return
+	end
+
+	local userId = tonumber(player.UserId)
+	for _, child in ipairs(PlayerGui:GetChildren()) do
+		if isDayBreakNametagGui(child) then
+			local targetUserId = tonumber(child:GetAttribute("DayBreakTargetUserId"))
+			if targetUserId == userId then
+				child:Destroy()
+			end
+		end
+	end
+end
+
 local function removePlayerGuiNametagsForCharacter(character)
 	if not character then
 		return
 	end
 
 	local head = character:FindFirstChild("Head")
-	if not head then
-		return
-	end
-
-	-- BillboardGuis are parented to PlayerGui so their GuiObjects receive
-	-- mouse input reliably. Match by Adornee so we only remove this player's tag.
 	for _, child in ipairs(PlayerGui:GetChildren()) do
-		if child:IsA("BillboardGui") and child.Adornee == head then
-			local name = tostring(child.Name)
-			if name == "CustomDayBreakNametag"
-				or name == "DayBreakCircleLogo"
-				or name == "DayBreakNametag"
-			or name == "DayBreakNameTag"
-			or name == "DayBreakLogo" then
+		if isDayBreakNametagGui(child) then
+			-- Prefer exact Adornee matching, but also remove tags whose Adornee
+			-- points at any descendant of this character (legacy safety).
+			local matchesHead = head and child.Adornee == head
+			local adornee = child.Adornee
+			local matchesCharacter = false
+			if adornee and adornee:IsDescendantOf(character) then
+				matchesCharacter = true
+			end
+
+			if matchesHead or matchesCharacter then
 				child:Destroy()
 			end
 		end
@@ -739,12 +792,20 @@ local function removePlayerGuiNametagsForCharacter(character)
 end
 
 local function removeNametag(character)
-
 	if not character then
 		return
 	end
 
+	-- First remove anything attached to this exact character.
 	removePlayerGuiNametagsForCharacter(character)
+
+	-- Then remove ALL PlayerGui tags belonging to the same player. This is the
+	-- important respawn fix: the old tag is still in PlayerGui after death, and
+	-- its old Head may no longer be the current character.
+	local player = Players:GetPlayerFromCharacter(character)
+	if player then
+		removeAllPlayerGuiNametags(player)
+	end
 
 	local oldConnection = NametagConnections[character]
 	if oldConnection then
@@ -861,7 +922,14 @@ end
 
 local function createNametag(player, character)
 
-	if not character then
+	if not player or not character then
+		return
+	end
+
+	-- Never build a tag for a character that is no longer the player's current
+	-- character. This blocks delayed registry/remote-config tasks from
+	-- resurrecting a nametag on a dead character.
+	if player.Character ~= character or not character.Parent then
 		return
 	end
 
@@ -871,6 +939,10 @@ local function createNametag(player, character)
 		return
 	end
 	CreatingNametags[character] = true
+
+	-- Remove any leftover tag from a previous character for this same player
+	-- before creating the new one.
+	removeAllPlayerGuiNametags(player)
 
 	local head = character:FindFirstChild("Head")
 
@@ -2415,16 +2487,60 @@ end)
 
 local function setupPlayer(player)
 
-	local function setupCharacter(character)
+	if not player then
+		return
+	end
 
+	-- If this player was already initialized by an older setup call in this
+	-- execution, disconnect those handlers before replacing them.
+	local oldCharacterAdded = _G.__DayBreakNametagPlayerConnections[player]
+	if oldCharacterAdded then
+		pcall(function()
+			if oldCharacterAdded.CharacterAdded then
+				oldCharacterAdded.CharacterAdded:Disconnect()
+			end
+			if oldCharacterAdded.CharacterRemoving then
+				oldCharacterAdded.CharacterRemoving:Disconnect()
+			end
+		end)
+		_G.__DayBreakNametagPlayerConnections[player] = nil
+	end
+
+	local function setupCharacter(character)
+		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
+			return
+		end
+
+		-- Small delay lets the new Head exist before the tag is built.
 		task.wait(0.5)
 
-		if character and character.Parent then
-			if shouldShowNametag(player) then
-				createNametag(player, character)
-			end
+		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
+			return
+		end
+
+		-- A newer respawn may have happened during the wait.
+		if character ~= player.Character or not character or not character.Parent then
+			return
+		end
+
+		if shouldShowNametag(player) then
+			createNametag(player, character)
 		end
 	end
+
+	local characterAddedConnection = player.CharacterAdded:Connect(setupCharacter)
+
+	local characterRemovingConnection = player.CharacterRemoving:Connect(function(character)
+		-- Destroy both the current tag and any orphaned tag from this player's
+		-- previous character immediately when Roblox starts removing the old one.
+		removeNametag(character)
+		removeAllPlayerGuiNametags(player)
+	end)
+
+	_G.__DayBreakNametagPlayerConnections[player] = {
+		CharacterAdded = characterAddedConnection,
+		CharacterRemoving = characterRemovingConnection,
+	}
 
 	-- Already spawned
 	if player.Character then
@@ -2432,9 +2548,6 @@ local function setupPlayer(player)
 			setupCharacter(player.Character)
 		end)
 	end
-
-	-- Respawn
-	player.CharacterAdded:Connect(setupCharacter)
 end
 
 --==================================================
@@ -2451,6 +2564,9 @@ end
 -- NEW PLAYERS
 --==================================================
 
-Players.PlayerAdded:Connect(function(player)
-	setupPlayer(player)
+local playerAddedConnection = Players.PlayerAdded:Connect(function(player)
+	if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
+		setupPlayer(player)
+	end
 end)
+_G.__DayBreakNametagPlayerConnections.__PlayerAdded = playerAddedConnection
