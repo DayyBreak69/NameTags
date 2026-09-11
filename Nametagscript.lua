@@ -1,12 +1,13 @@
 --==================================================
--- V16 EXPANDED COLORS
--- Based directly on the tested V15 respawn-fix build.
--- Only named name/border color support is expanded.
+-- V27 FULL AUDIT BUILD
+-- Based on the tested V15 respawn-safe renderer with the later bot/config,
+-- color, live-update, and logo-rotation features retained.
+-- This build removes the known conflicting/duplicated paths found in V26.
 --==================================================
 
 --==================================================
 -- DAYBREAK MULTIPLAYER NAMETAG
--- V21: PRELOADED MASTER COLOR PALETTE
+-- V27: FULL AUDIT / CONFLICT CLEANUP
 --==================================================
 
 -- Single-instance guard: every execution invalidates the previous instance.
@@ -117,8 +118,6 @@ local NAMED_COLORS = {
     Gold = Color3.fromRGB(255, 195, 45),
 }
 
-local namedBorderColors = NAMED_COLORS
-local namedNameColors = NAMED_COLORS
 
 --==================================================
 -- SAFE PRELOADED COLOR RESOLVER
@@ -423,17 +422,14 @@ local function downloadBanner(filename)
 
 	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
 
-	-- Fresh local filename prevents the executor from reusing an older banner.
-	-- Keep a stable local cache so a nametag rebuild does not briefly show
-	-- the black panel while the banner is downloaded again.
-	-- Use a per-execution cache filename so a bad/stale local banner
-	-- can never permanently replace a newer GitHub banner.
+	-- Use a fresh file for this execution so an old local asset can never
+	-- overwrite a newer GitHub banner. This is deliberately separate from
+	-- the remote-config polling cache.
 	local localPath =
 		BANNER_FOLDER .. "/" ..
 		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. BANNER_SESSION .. ".png"
 
-	-- If this banner was already downloaded during a previous tag rebuild,
-	-- load it immediately instead of hitting GitHub again.
+	-- Reuse the already-downloaded banner during this script execution.
 	if isfile then
 		local exists = false
 		pcall(function() exists = isfile(localPath) end)
@@ -454,17 +450,20 @@ local function downloadBanner(filename)
 		pcall(makefolder, BANNER_FOLDER)
 	end
 
-	-- Try jsDelivr first, then GitHub Raw. The query string makes each
-	-- execution request a fresh copy instead of reusing a stale CDN response.
-	local urls = {
-		"https://cdn.jsdelivr.net/gh/DayyBreak69/NameTags@main/banners/" .. safeName
-			.. "?cb=" .. BANNER_SESSION,
-		BANNER_BASE_URL .. safeName .. "?cb=" .. BANNER_SESSION,
-	}
-
+	local url = BANNER_BASE_URL .. safeName
 	local body = nil
 
-	for _, url in ipairs(urls) do
+	-- V15's tested order: Roblox HttpGet first, executor request second.
+	-- Do not inspect or transform the binary PNG body before writefile().
+	local okHttp, httpBody = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if okHttp and type(httpBody) == "string" and #httpBody > 0 then
+		body = httpBody
+	end
+
+	if not body then
 		local result = httpRequest({
 			Url = url,
 			Method = "GET",
@@ -474,16 +473,6 @@ local function downloadBanner(filename)
 			and type(result.Body) == "string"
 			and #result.Body > 0 then
 			body = result.Body
-			break
-		end
-
-		local okHttp, httpBody = pcall(function()
-			return game:HttpGet(url)
-		end)
-
-		if okHttp and type(httpBody) == "string" and #httpBody > 0 then
-			body = httpBody
-			break
 		end
 	end
 
@@ -500,14 +489,7 @@ local function downloadBanner(filename)
 	end
 
 	AssetCache[localPath] = nil
-
-	local asset = loadLocalAsset(localPath)
-
-	if not asset then
-		return nil
-	end
-
-	return asset
+	return loadLocalAsset(localPath)
 end
 
 --==================================================
@@ -671,19 +653,17 @@ local function applyRemoteConfig(body)
 	end
 
 	if type(decoded.players) == "table" then
-		-- Remote entries are the only source of player-specific custom tags.
-		local mergedPlayers = copyTable(SETTINGS.PlayerTags)
+		-- Remote players are an authoritative snapshot. Do NOT merge with the
+		-- previous snapshot: a Discord /nametag reset removes an entry from
+		-- GitHub, and the client must remove it from memory on the next poll.
+		local newPlayers = {}
 		for playerKey, playerConfig in pairs(decoded.players) do
 			if type(playerConfig) == "table" then
 				local key = tostring(playerKey)
-				local mergedConfig = copyTable(mergedPlayers[key])
-				for configKey, configValue in pairs(playerConfig) do
-					mergedConfig[configKey] = configValue
-				end
-				mergedPlayers[key] = mergedConfig
+				newPlayers[key] = copyTable(playerConfig)
 			end
 		end
-		SETTINGS.PlayerTags = mergedPlayers
+		SETTINGS.PlayerTags = newPlayers
 	end
 
 	-- Optional role lookup retained for compatibility with the existing engine.
@@ -757,7 +737,11 @@ end
 
 local function getRole(player)
 	local config = getTagConfig(player)
-	return config.Role or SETTINGS.Roles[player.Name] or SETTINGS.DefaultRole
+	return config.Role
+		or SETTINGS.Roles[player.UserId]
+		or SETTINGS.Roles[tostring(player.UserId)]
+		or SETTINGS.Roles[player.Name]
+		or SETTINGS.DefaultRole
 end
 
 --==================================================
@@ -996,7 +980,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "BotOnlyDesignV19")
+	billboard:SetAttribute("DayBreakNametagVersion", "FullAuditV27")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1088,6 +1072,9 @@ local function createNametag(player, character)
 		asset = loadLocalAsset(tagConfig.BackgroundFile)
 	end
 
+	panel:SetAttribute("DayBreakBannerLoaded", asset ~= nil)
+	panel:SetAttribute("DayBreakBannerFile", tostring(bannerFile or ""))
+
 	if asset then
 			backgroundImage = Instance.new("ImageLabel")
 			backgroundImage.Name = "CustomBackground"
@@ -1108,7 +1095,6 @@ local function createNametag(player, character)
 			local backgroundCorner = Instance.new("UICorner")
 			backgroundCorner.CornerRadius = UDim.new(0, 18)
 			backgroundCorner.Parent = backgroundImage
-	else
 	end
 
 	--==================================================
@@ -1184,6 +1170,7 @@ local function createNametag(player, character)
 		borderGlow.Enabled = not isNone
 
 		if isNone then
+			panelStroke.Enabled = false
 			return
 		end
 
@@ -1213,6 +1200,7 @@ local function createNametag(player, character)
 		panelStroke.Enabled = true
 
 		local color = getPreloadedColor(style)
+			or parseBorderColor(style)
 			or parseBorderColor(tagConfig.BorderColor)
 			or (style:lower() == "whiteglow" and SETTINGS.WhiteGlow)
 			or (style:lower() == "neonpink" and SETTINGS.NeonPink)
@@ -1338,7 +1326,7 @@ local function createNametag(player, character)
 		-- Fill the circular logo area. The starCircle itself clips the
 		-- artwork to a perfect circle, while ScaleType.Fit preserves the
 		-- uploaded image's aspect ratio.
-		customLogo.Size = UDim2.fromScale(1, 1)
+		customLogo.Size = UDim2.fromScale(1.06, 1.06)
 		customLogo.Position = UDim2.fromScale(0.5, 0.5)
 		customLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogo.Image = customLogoAsset
@@ -1583,7 +1571,7 @@ local function createNametag(player, character)
 		customLogoDistant.Name = "customLogoDistant"
 		customLogoDistant.BackgroundTransparency = 1
 		customLogoDistant.BorderSizePixel = 0
-		customLogoDistant.Size = UDim2.fromScale(1, 1)
+		customLogoDistant.Size = UDim2.fromScale(1.06, 1.06)
 		customLogoDistant.Position = UDim2.fromScale(0.5, 0.5)
 		customLogoDistant.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogoDistant.Image = customLogoAsset
