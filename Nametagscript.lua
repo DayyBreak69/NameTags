@@ -361,7 +361,6 @@ local function loadLocalAsset(path)
 		return asset
 	end
 
-	warn("[DayBreak] Could not load local asset:", path)
 	return nil
 end
 
@@ -371,7 +370,6 @@ local function downloadBanner(filename)
 	end
 
 	if not getAsset then
-		warn("[DayBreak] Executor does not support getcustomasset/getsynasset.")
 		return nil
 	end
 
@@ -398,7 +396,6 @@ local function downloadBanner(filename)
 	end
 
 	if not writefile then
-		warn("[DayBreak] Executor does not support writefile.")
 		return nil
 	end
 
@@ -433,7 +430,6 @@ local function downloadBanner(filename)
 	end
 
 	if not body then
-		warn("[DayBreak] Failed to download banner:", safeName)
 		return nil
 	end
 
@@ -442,7 +438,6 @@ local function downloadBanner(filename)
 	end)
 
 	if not okWrite then
-		warn("[DayBreak] Failed to save banner:", localPath)
 		return nil
 	end
 
@@ -451,7 +446,6 @@ local function downloadBanner(filename)
 	local asset = loadLocalAsset(localPath)
 
 	if not asset then
-		warn("[DayBreak] Downloaded banner but could not load asset:", safeName)
 		return nil
 	end
 
@@ -478,7 +472,6 @@ local function downloadLogo(filename)
 	end
 
 	if not getAsset then
-		warn("[DayBreak] Executor does not support getcustomasset/getsynasset.")
 		return nil
 	end
 
@@ -488,7 +481,6 @@ local function downloadLogo(filename)
 		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. LOGO_SESSION .. ".png"
 
 	if not writefile then
-		warn("[DayBreak] Executor does not support writefile.")
 		return nil
 	end
 
@@ -534,8 +526,6 @@ local function downloadLogo(filename)
 	end
 
 	if not body then
-		warn("[DayBreak] Failed to download logo:", safeName)
-		warn("[DayBreak] Tried CDN and GitHub Raw:", safeName)
 		return nil
 	end
 
@@ -544,7 +534,6 @@ local function downloadLogo(filename)
 	end)
 
 	if not okWrite then
-		warn("[DayBreak] Failed to save logo:", localPath)
 		return nil
 	end
 
@@ -552,8 +541,6 @@ local function downloadLogo(filename)
 	local asset = loadLocalAsset(localPath)
 
 	if not asset then
-		warn("[DayBreak] Downloaded logo but could not load asset:", safeName)
-		warn("[DayBreak] Source:", successfulUrl or "unknown")
 		return nil
 	end
 
@@ -610,7 +597,6 @@ local function applyRemoteConfig(body)
 	end)
 
 	if not ok or type(decoded) ~= "table" then
-		warn("[DayBreak] Remote nametag config JSON is invalid.")
 		return false
 	end
 
@@ -676,7 +662,6 @@ local function fetchRemoteConfig()
 			return false, false
 		end
 		remoteConfigBody = body
-		warn("[DayBreak] Remote nametag config loaded.")
 	end
 
 	return true, changed
@@ -1015,7 +1000,6 @@ local function createNametag(player, character)
 			backgroundCorner.CornerRadius = UDim.new(0, 18)
 			backgroundCorner.Parent = backgroundImage
 	else
-		warn("[DayBreak] No banner asset loaded for", player.Name, "filename:", tostring(bannerFile))
 	end
 
 	--==================================================
