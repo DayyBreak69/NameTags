@@ -229,9 +229,22 @@ local SETTINGS = {
 -- Roblox only reads it; no GitHub write token is ever placed in this script.
 local REMOTE_CONFIG_URL =
 	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/config/nametags.json"
-local REMOTE_CONFIG_POLL_SECONDS = 15
+
+-- Fast remote updates: check GitHub every 5 seconds.
+-- Each request gets a unique cache-buster so stale CDN responses are less likely.
+local REMOTE_CONFIG_POLL_SECONDS = 5
+local remoteConfigRequestCounter = 0
 local remoteConfigBody = nil
 local remoteConfigOnline = false
+
+local function getRemoteConfigUrl()
+	remoteConfigRequestCounter += 1
+	return REMOTE_CONFIG_URL
+		.. "?cb="
+		.. tostring(os.time())
+		.. "_"
+		.. tostring(remoteConfigRequestCounter)
+end
 
 --==================================================
 -- SHARED REGISTRY
@@ -616,8 +629,7 @@ local function fetchRemoteConfig()
 		return false, false
 	end
 
-	local cacheBustedUrl = REMOTE_CONFIG_URL .. "?cb=" .. tostring(os.time())
-	local body = httpGetText(cacheBustedUrl)
+	local body = httpGetText(getRemoteConfigUrl())
 	if not body then
 		remoteConfigOnline = false
 		return false, false
