@@ -6,6 +6,36 @@
     "BackgroundTransparency": 0.05,
     "Role": "MEMBER"
   },
-  "roles": {},
-  "players": {}
+  "roles": {
+    "DayyBreak66": "OWNER"
+  },
+  "players": {
+    "DayyBreak66": {
+      "Role": "OWNER",
+      "DisplayName": "DayBreak",
+      "Banner": "Daybreak.png",
+      "Logo": "Catlogo.png",
+      "BackgroundTransparency": 0.05
+    },
+    "xOmqhayleealt": {
+      "Role": "Admin",
+      "DisplayName": "Haylee",
+      "Banner": "Haylee.png",
+      "Border": "NeonPink",
+      "BackgroundTransparency": 0.05
+    },
+    "Chloeeafm": {
+      "Role": "Admin",
+      "DisplayName": "Owned By Nigger",
+      "Banner": "Chloe123.png",
+      "BackgroundTransparency": 0.05
+    },
+    "Gummaes": {
+      "Role": "Admin",
+      "DisplayName": "Nigger",
+      "Banner": "Gummies1.png",
+      "Border": "WhiteGlow",
+      "BackgroundTransparency": 0.05
+    }
+  }
 }
