@@ -244,6 +244,7 @@ local SETTINGS = {
 	NeonPink = Color3.fromRGB(255, 0, 190),
 	NeonPinkGlow = Color3.fromRGB(255, 40, 220),
 	WhiteGlow = Color3.fromRGB(255, 255, 255),
+	BorderColor = nil, -- Optional custom border color: #RRGGBB or named color
 
 	-- Floating
 	FloatingEnabled = true,
@@ -1016,64 +1017,61 @@ local function createNametag(player, character)
 	panelStroke.Parent = panel
 
 	--==================================================
-	-- PLAYER BORDER STYLE
+	-- NORMAL PLAYER BORDER
 	--==================================================
+	-- One normal UIStroke on the same panel used by the default border.
+	-- Rainbow is simply a color gradient on this SAME stroke, so every
+	-- border style shares the exact same size, position and corner shape.
 
-	-- Neon Pink is a clean UIStroke border: no segments, particles,
-	-- moving bars, or banner overlay objects.
-	if borderStyle == "NeonPink" then
-		local neonBorder = Instance.new("UIStroke")
-		neonBorder.Name = "NeonPinkBorder"
-		neonBorder.Thickness = 4
-		neonBorder.Color = SETTINGS.NeonPink
-		neonBorder.Transparency = 0.02
-		neonBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		neonBorder.Parent = panel
+	local borderStroke = Instance.new("UIStroke")
+	borderStroke.Name = "PlayerBorder"
+	borderStroke.Thickness = 3
+	borderStroke.Transparency = 0.02
+	borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	borderStroke.Parent = panel
 
-		local neonGlow = Instance.new("UIStroke")
-		neonGlow.Name = "NeonPinkGlow"
-		neonGlow.Thickness = 10
-		neonGlow.Color = SETTINGS.NeonPinkGlow
-		neonGlow.Transparency = 0.45
-		neonGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		neonGlow.Parent = panel
+	local borderGlow = Instance.new("UIStroke")
+	borderGlow.Name = "PlayerBorderGlow"
+	borderGlow.Thickness = 8
+	borderGlow.Transparency = 0.72
+	borderGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	borderGlow.Parent = panel
+
+	local borderGradient = nil
+	local borderGlowGradient = nil
+
+	local function parseBorderColor(value)
+		if typeof(value) == "Color3" then
+			return value
+		end
+		if type(value) ~= "string" then
+			return nil
+		end
+		local hex = value:gsub("#", "")
+		if #hex == 6 and hex:match("^%x%x%x%x%x%x$") then
+			local r = tonumber(hex:sub(1, 2), 16)
+			local g = tonumber(hex:sub(3, 4), 16)
+			local b = tonumber(hex:sub(5, 6), 16)
+			return Color3.fromRGB(r, g, b)
+		end
+		return nil
 	end
 
-	if borderStyle == "WhiteGlow" then
-		local whiteBorder = Instance.new("UIStroke")
-		whiteBorder.Name = "WhiteGlowBorder"
-		whiteBorder.Thickness = 3
-		whiteBorder.Color = SETTINGS.WhiteGlow
-		whiteBorder.Transparency = 0.02
-		whiteBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		whiteBorder.Parent = panel
+	local namedBorderColors = {
+		Red = Color3.fromRGB(255, 60, 60),
+		Orange = Color3.fromRGB(255, 145, 40),
+		Yellow = Color3.fromRGB(255, 225, 55),
+		Green = Color3.fromRGB(60, 255, 110),
+		Cyan = Color3.fromRGB(40, 235, 255),
+		Blue = Color3.fromRGB(70, 130, 255),
+		Purple = Color3.fromRGB(170, 80, 255),
+		Pink = Color3.fromRGB(255, 70, 210),
+		White = Color3.fromRGB(255, 255, 255),
+		Black = Color3.fromRGB(0, 0, 0),
+		Gold = Color3.fromRGB(255, 195, 45),
+	}
 
-		local whiteGlow = Instance.new("UIStroke")
-		whiteGlow.Name = "WhiteGlow"
-		whiteGlow.Thickness = 8
-		whiteGlow.Color = SETTINGS.WhiteGlow
-		whiteGlow.Transparency = 0.72
-		whiteGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		whiteGlow.Parent = panel
-	end
-
-	--==================================================
-	-- RAINBOW BORDER — EXACT SAME GEOMETRY AS WHITEGLOW
-	--==================================================
-	-- WhiteGlow is attached to `panel`. Rainbow uses that SAME panel,
-	-- the SAME ApplyStrokeMode, and the SAME stroke thickness. There
-	-- is deliberately no second rectangle/frame for Rainbow.
-
-	local rainbowBorder = Instance.new("UIStroke")
-	rainbowBorder.Name = "RainbowBorder"
-	rainbowBorder.Thickness = 3
-	rainbowBorder.Transparency = 0
-	rainbowBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowBorder.Parent = panel
-
-	local rainbowGradient = Instance.new("UIGradient")
-	rainbowGradient.Name = "RainbowGradient"
-	rainbowGradient.Color = ColorSequence.new({
+	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
 		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
 		ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
@@ -1082,26 +1080,52 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(0.83, Color3.fromRGB(127, 0, 255)),
 		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
 	})
-	rainbowGradient.Parent = rainbowBorder
 
-	local rainbowGlow = Instance.new("UIStroke")
-	rainbowGlow.Name = "RainbowGlow"
-	rainbowGlow.Thickness = 8
-	rainbowGlow.Transparency = 0.72
-	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowGlow.Parent = panel
+	local function configurePlayerBorder()
+		local style = tostring(borderStyle or "WhiteGlow")
+		local isRainbow = style:lower() == "rainbow"
+		local isNone = style:lower() == "none"
 
-	local rainbowGlowGradient = Instance.new("UIGradient")
-	rainbowGlowGradient.Name = "RainbowGlowGradient"
-	rainbowGlowGradient.Color = rainbowGradient.Color
-	rainbowGlowGradient.Parent = rainbowGlow
+		borderStroke.Enabled = not isNone
+		borderGlow.Enabled = not isNone
 
-	local function setRainbowBorderVisible(visible)
-		rainbowBorder.Enabled = visible
-		rainbowGlow.Enabled = visible
+		if isNone then
+			return
+		end
+
+		if isRainbow then
+			borderGradient = Instance.new("UIGradient")
+			borderGradient.Name = "RainbowBorderGradient"
+			borderGradient.Color = rainbowColors
+			borderGradient.Parent = borderStroke
+
+			borderGlowGradient = Instance.new("UIGradient")
+			borderGlowGradient.Name = "RainbowBorderGlowGradient"
+			borderGlowGradient.Color = rainbowColors
+			borderGlowGradient.Parent = borderGlow
+			return
+		end
+
+		local color = namedBorderColors[style]
+			or parseBorderColor(tagConfig.BorderColor)
+			or (style:lower() == "whiteglow" and SETTINGS.WhiteGlow)
+			or (style:lower() == "neonpink" and SETTINGS.NeonPink)
+			or SETTINGS.WhiteGlow
+
+		borderStroke.Color = color
+		borderGlow.Color = color
 	end
 
-	setRainbowBorderVisible(borderStyle == "Rainbow" and SETTINGS.RainbowBannerEnabled)
+	configurePlayerBorder()
+
+	local function setRainbowBorderOffset(offset)
+		if borderGradient then
+			borderGradient.Offset = Vector2.new(offset, 0)
+		end
+		if borderGlowGradient then
+			borderGlowGradient.Offset = Vector2.new(offset, 0)
+		end
+	end
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1870,13 +1894,9 @@ local function createNametag(player, character)
 		-- Each segment gets a smoothly moving HSV hue.
 		--==================================================
 
-		if SETTINGS.RainbowBannerEnabled and borderStyle == "Rainbow" then
-			setRainbowBorderVisible(true)
+		if SETTINGS.RainbowBannerEnabled and tostring(borderStyle):lower() == "rainbow" then
 			local offset = (time * SETTINGS.RainbowBannerSpeed * 0.0025) % 1
-			rainbowGradient.Offset = Vector2.new(offset, 0)
-			rainbowGlowGradient.Offset = Vector2.new(offset, 0)
-		else
-			setRainbowBorderVisible(false)
+			setRainbowBorderOffset(offset)
 		end
 
 		--==================================================
