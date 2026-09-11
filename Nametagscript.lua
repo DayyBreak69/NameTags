@@ -1,4 +1,10 @@
 --==================================================
+-- V16 EXPANDED COLORS
+-- Based directly on the tested V15 respawn-fix build.
+-- Only named name/border color support is expanded.
+--==================================================
+
+--==================================================
 -- DAYBREAK MULTIPLAYER NAMETAG
 --==================================================
 
@@ -1132,15 +1138,50 @@ local function createNametag(player, character)
 		return nil
 	end
 
+	-- Named border colors. These are also accepted from GitHub config, so
+	-- adding a color here does NOT require changing the Discord bot.
 	local namedBorderColors = {
 		Red = Color3.fromRGB(255, 60, 60),
+		Crimson = Color3.fromRGB(220, 35, 55),
 		Orange = Color3.fromRGB(255, 145, 40),
+		Amber = Color3.fromRGB(255, 175, 35),
 		Yellow = Color3.fromRGB(255, 225, 55),
+		Lime = Color3.fromRGB(150, 255, 45),
 		Green = Color3.fromRGB(60, 255, 110),
+		Emerald = Color3.fromRGB(35, 210, 125),
 		Cyan = Color3.fromRGB(40, 235, 255),
+		SkyBlue = Color3.fromRGB(70, 190, 255),
 		Blue = Color3.fromRGB(70, 130, 255),
+		RoyalBlue = Color3.fromRGB(55, 85, 235),
 		Purple = Color3.fromRGB(170, 80, 255),
+		Violet = Color3.fromRGB(125, 70, 255),
+		Magenta = Color3.fromRGB(235, 55, 255),
 		Pink = Color3.fromRGB(255, 70, 210),
+		Rose = Color3.fromRGB(255, 80, 135),
+		White = Color3.fromRGB(255, 255, 255),
+		Black = Color3.fromRGB(0, 0, 0),
+		Gold = Color3.fromRGB(255, 195, 45),
+	}
+
+	-- Named name colors. The same names can be sent by the remote config.
+	local namedNameColors = {
+		Red = Color3.fromRGB(255, 60, 60),
+		Crimson = Color3.fromRGB(220, 35, 55),
+		Orange = Color3.fromRGB(255, 145, 40),
+		Amber = Color3.fromRGB(255, 175, 35),
+		Yellow = Color3.fromRGB(255, 225, 55),
+		Lime = Color3.fromRGB(150, 255, 45),
+		Green = Color3.fromRGB(60, 255, 110),
+		Emerald = Color3.fromRGB(35, 210, 125),
+		Cyan = Color3.fromRGB(40, 235, 255),
+		SkyBlue = Color3.fromRGB(70, 190, 255),
+		Blue = Color3.fromRGB(70, 130, 255),
+		RoyalBlue = Color3.fromRGB(55, 85, 235),
+		Purple = Color3.fromRGB(170, 80, 255),
+		Violet = Color3.fromRGB(125, 70, 255),
+		Magenta = Color3.fromRGB(235, 55, 255),
+		Pink = Color3.fromRGB(255, 70, 210),
+		Rose = Color3.fromRGB(255, 80, 135),
 		White = Color3.fromRGB(255, 255, 255),
 		Black = Color3.fromRGB(0, 0, 0),
 		Gold = Color3.fromRGB(255, 195, 45),
@@ -1402,7 +1443,17 @@ local function createNametag(player, character)
 	-- Custom name from PlayerTags, or Roblox DisplayName if none is set
 	nameLabel.Text = getNametagName(player)
 
-	nameLabel.TextColor3 = SETTINGS.White
+	-- NameColor supports Rainbow, named colors, and #RRGGBB values.
+	-- Rainbow remains handled by the existing UIGradient below.
+	local requestedNameColor = tostring(tagConfig.NameColor or "White")
+	local requestedNameColorLower = requestedNameColor:lower()
+	if requestedNameColorLower ~= "rainbow" then
+		local customNameColor = namedNameColors[requestedNameColor]
+			or parseBorderColor(requestedNameColor)
+		nameLabel.TextColor3 = customNameColor or SETTINGS.White
+	else
+		nameLabel.TextColor3 = SETTINGS.White
+	end
 	nameLabel.TextSize = 19
 	nameLabel.Font = SETTINGS.Font
 
@@ -2064,6 +2115,10 @@ local function createNametag(player, character)
 				ownerNameGradient.Offset = Vector2.new(math.sin(time * SETTINGS.OwnerRainbowNameSpeed * 0.01) * 0.35, 0)
 			else
 				ownerNameGradient.Enabled = false
+				-- Keep the selected static color visible when Rainbow is disabled.
+				local staticNameColor = namedNameColors[tostring(tagConfig.NameColor or "White")]
+					or parseBorderColor(tagConfig.NameColor)
+				nameLabel.TextColor3 = staticNameColor or SETTINGS.White
 			end
 		end
 
