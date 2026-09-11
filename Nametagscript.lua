@@ -891,7 +891,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV12")
+	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV13")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1107,14 +1107,14 @@ local function createNametag(player, character)
 			borderGradient.Name = "RainbowBorderGradient"
 			borderGradient.Color = rainbowColors
 			borderGradient.Rotation = 0
-			borderGradient.TileMode = Enum.GradientTileMode.Repeat
+			borderGradient.TileMode = Enum.GradientTileMode.Clamp
 			borderGradient.Parent = borderStroke
 
 			borderGlowGradient = Instance.new("UIGradient")
 			borderGlowGradient.Name = "RainbowBorderGlowGradient"
 			borderGlowGradient.Color = rainbowColors
 			borderGlowGradient.Rotation = 0
-			borderGlowGradient.TileMode = Enum.GradientTileMode.Repeat
+			borderGlowGradient.TileMode = Enum.GradientTileMode.Clamp
 			borderGlowGradient.Parent = borderGlow
 			return
 		end
@@ -1910,8 +1910,16 @@ local function createNametag(player, character)
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled and tostring(borderStyle):lower() == "rainbow" then
-			local offset = -((time * SETTINGS.RainbowBannerSpeed * 0.0025) % 1)
-			setRainbowBorderOffset(offset)
+			-- Rotate the full rainbow instead of sliding the gradient.
+			-- This avoids the Offset seam/clamp that can temporarily make
+			-- the border appear as one solid color before wrapping.
+			local rotation = (time * SETTINGS.RainbowBannerSpeed) % 360
+			if borderGradient then
+				borderGradient.Rotation = rotation
+			end
+			if borderGlowGradient then
+				borderGlowGradient.Rotation = rotation
+			end
 		end
 
 		--==================================================
