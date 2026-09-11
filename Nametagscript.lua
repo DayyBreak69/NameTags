@@ -677,14 +677,15 @@ local function getTagConfig(player)
 		config[key] = value
 	end
 
-	-- Preserve the original V4 OWNER look even when the remote config
-	-- does not explicitly store these two optional fields. Explicit
-	-- Discord choices still win because they are already in config.
+	-- Preserve the original V4 OWNER look when the remote player entry
+	-- does not explicitly choose Border/NameColor. The defaults table
+	-- may contain WhiteGlow, so checking `config.Border` alone is not
+	-- enough: we must check whether the PLAYER actually supplied it.
 	if tostring(config.Role or ""):upper() == "OWNER" then
-		if config.Border == nil or tostring(config.Border) == "" then
+		if playerConfig.Border == nil or tostring(playerConfig.Border) == "" then
 			config.Border = "Rainbow"
 		end
-		if config.NameColor == nil or tostring(config.NameColor) == "" then
+		if playerConfig.NameColor == nil or tostring(playerConfig.NameColor) == "" then
 			config.NameColor = "Rainbow"
 		end
 	end
@@ -889,7 +890,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "CleanBorderV3")
+	billboard:SetAttribute("DayBreakNametagVersion", "RainbowMatchWhiteGlowV9")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1057,18 +1058,18 @@ local function createNametag(player, character)
 	end
 
 	--==================================================
-	-- RAINBOW BORDER — EXACT OUTER TAG SIZE
+	-- RAINBOW BORDER — EXACT SAME GEOMETRY AS WHITEGLOW
 	--==================================================
-	-- Rainbow is intentionally attached to `outer`, the exact same
-	-- Frame that defines the visible nametag's full 1:1 bounds.
-	-- No inset rectangle, offset, or separate scaling is used.
+	-- WhiteGlow is attached to `panel`. Rainbow uses that SAME panel,
+	-- the SAME ApplyStrokeMode, and the SAME stroke thickness. There
+	-- is deliberately no second rectangle/frame for Rainbow.
 
 	local rainbowBorder = Instance.new("UIStroke")
 	rainbowBorder.Name = "RainbowBorder"
 	rainbowBorder.Thickness = 3
 	rainbowBorder.Transparency = 0
 	rainbowBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowBorder.Parent = outer
+	rainbowBorder.Parent = panel
 
 	local rainbowGradient = Instance.new("UIGradient")
 	rainbowGradient.Name = "RainbowGradient"
@@ -1088,7 +1089,7 @@ local function createNametag(player, character)
 	rainbowGlow.Thickness = 8
 	rainbowGlow.Transparency = 0.72
 	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowGlow.Parent = outer
+	rainbowGlow.Parent = panel
 
 	local rainbowGlowGradient = Instance.new("UIGradient")
 	rainbowGlowGradient.Name = "RainbowGlowGradient"
