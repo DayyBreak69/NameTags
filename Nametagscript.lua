@@ -1083,19 +1083,16 @@ local function createNametag(player, character)
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
-	-- Match the exact same 0.88 visual scale as the main tag chrome.
-	-- The rainbow border lives directly under the BillboardGui, so without
-	-- its own UIScale it would remain at the old full 280x75 size.
+	-- IMPORTANT: parent the rainbow border to the same scaled outer frame
+	-- as the nametag itself. This makes the border and tag use exactly the
+	-- same coordinate space, eliminating the previous size/offset mismatch.
 	rainbowContainer.Size = UDim2.fromScale(1, 1)
 	rainbowContainer.Position = UDim2.fromScale(0.5, 0.5)
 	rainbowContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	rainbowContainer.ClipsDescendants = false
 	rainbowContainer.ZIndex = 50
 	rainbowContainer.Visible = (borderStyle == "Rainbow")
-	local rainbowScale = Instance.new("UIScale")
-	rainbowScale.Scale = tonumber(SETTINGS.OverallTagScale) or 0.88
-	rainbowScale.Parent = rainbowContainer
-	rainbowContainer.Parent = billboard
+	rainbowContainer.Parent = outer
 
 	local rainbowSegments = {}
 	local RAINBOW_SEGMENT_COUNT = 61
@@ -1423,8 +1420,8 @@ local function createNametag(player, character)
 	-- the Rotation property.
 	ownerNameGradient.Rotation = 0
 	ownerNameGradient.Offset = Vector2.new(0, 0)
-	ownerNameGradient.Enabled = (tostring(tagConfig.NameColor or ""):lower() == "rainbow")
-			and ((getRole(player) == "OWNER") or tostring(tagConfig.NameColor):lower() == "rainbow")
+	ownerNameGradient.Enabled = (getRole(player) == "OWNER")
+			or tostring(tagConfig.NameColor or ""):lower() == "rainbow"
 	ownerNameGradient.Parent = nameLabel
 
 	nameLabel.ZIndex = 6
@@ -2051,7 +2048,7 @@ local function createNametag(player, character)
 			if tostring(tagConfig.NameColor or ""):lower() == "rainbow"
 				or (getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled) then
 				ownerNameGradient.Enabled = true
-				ownerNameGradient.Offset = Vector2.new((time * SETTINGS.OwnerRainbowNameSpeed * 0.002) % 1, 0)
+				ownerNameGradient.Offset = Vector2.new(math.sin(time * SETTINGS.OwnerRainbowNameSpeed * 0.01) * 0.35, 0)
 			else
 				ownerNameGradient.Enabled = false
 			end
