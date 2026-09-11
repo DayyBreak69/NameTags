@@ -2293,12 +2293,11 @@ local function isActivePlayer(player)
 	return player == localPlayer or ActivePlayers[player.UserId] == true
 end
 
--- Configured players always get a tag, even if they have never executed the script.
--- This lets you assign custom banners/roles to specific friends.
+-- Only players who have executed the script get a nametag.
+-- GitHub PlayerTags controls the appearance; it does NOT control visibility.
+-- Therefore active players without a custom entry use the normal default tag.
 local function shouldShowNametag(player)
 	return isActivePlayer(player)
-		or SETTINGS.PlayerTags[player.UserId] ~= nil
-		or SETTINGS.PlayerTags[player.Name] ~= nil
 end
 
 local function hasNametagForCharacter(character)
