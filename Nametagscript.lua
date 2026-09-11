@@ -891,7 +891,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "RainbowMatchWhiteGlowV9")
+	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV11")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1011,6 +1011,7 @@ local function createNametag(player, character)
 	--==================================================
 
 	local panelStroke = Instance.new("UIStroke")
+	panelStroke.Name = "PanelChromeStroke"
 	panelStroke.Thickness = 2
 	panelStroke.Color = SETTINGS.OrangeBright
 	panelStroke.Transparency = 0.15
@@ -1023,19 +1024,21 @@ local function createNametag(player, character)
 	-- Rainbow is simply a color gradient on this SAME stroke, so every
 	-- border style shares the exact same size, position and corner shape.
 
-	local borderStroke = Instance.new("UIStroke")
-	borderStroke.Name = "PlayerBorder"
-	borderStroke.Thickness = 3
-	borderStroke.Transparency = 0.02
-	borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	borderStroke.Parent = panel
-
 	local borderGlow = Instance.new("UIStroke")
 	borderGlow.Name = "PlayerBorderGlow"
 	borderGlow.Thickness = 8
 	borderGlow.Transparency = 0.72
 	borderGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	borderGlow.ZIndex = 1
 	borderGlow.Parent = panel
+
+	local borderStroke = Instance.new("UIStroke")
+	borderStroke.Name = "PlayerBorder"
+	borderStroke.Thickness = 3
+	borderStroke.Transparency = 0.02
+	borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	borderStroke.ZIndex = 2
+	borderStroke.Parent = panel
 
 	local borderGradient = nil
 	local borderGlowGradient = nil
@@ -1094,17 +1097,27 @@ local function createNametag(player, character)
 		end
 
 		if isRainbow then
+			-- Rainbow is the SAME normal UIStroke geometry as every other border.
+			-- Hide the decorative chrome stroke so it cannot cover the gradient.
+			panelStroke.Enabled = false
+			borderStroke.Color = Color3.new(1, 1, 1)
+			borderGlow.Color = Color3.new(1, 1, 1)
+
 			borderGradient = Instance.new("UIGradient")
 			borderGradient.Name = "RainbowBorderGradient"
 			borderGradient.Color = rainbowColors
+			borderGradient.Rotation = 0
 			borderGradient.Parent = borderStroke
 
 			borderGlowGradient = Instance.new("UIGradient")
 			borderGlowGradient.Name = "RainbowBorderGlowGradient"
 			borderGlowGradient.Color = rainbowColors
+			borderGlowGradient.Rotation = 0
 			borderGlowGradient.Parent = borderGlow
 			return
 		end
+
+		panelStroke.Enabled = true
 
 		local color = namedBorderColors[style]
 			or parseBorderColor(tagConfig.BorderColor)
