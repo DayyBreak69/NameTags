@@ -6,6 +6,7 @@
 
 --==================================================
 -- DAYBREAK MULTIPLAYER NAMETAG
+-- V21: PRELOADED MASTER COLOR PALETTE
 --==================================================
 
 -- Single-instance guard: every execution invalidates the previous instance.
@@ -1048,6 +1049,20 @@ local function createNametag(player, character)
 	local borderGradient = nil
 	local borderGlowGradient = nil
 
+	local function getPreloadedColor(value)
+		local requested = tostring(value or "")
+		if NAMED_COLORS[requested] then
+			return NAMED_COLORS[requested]
+		end
+		local lower = requested:lower()
+		for name, color in pairs(NAMED_COLORS) do
+			if name:lower() == lower then
+				return color
+			end
+		end
+		return nil
+	end
+
 	local function parseBorderColor(value)
 		if typeof(value) == "Color3" then
 			return value
@@ -1067,7 +1082,7 @@ local function createNametag(player, character)
 
 	-- Named border colors. These are also accepted from GitHub config, so
 	-- adding a color here does NOT require changing the Discord bot.
-	local namedBorderColors = {
+	local NAMED_COLORS = {
 		Red = Color3.fromRGB(255, 60, 60),
 		Crimson = Color3.fromRGB(220, 35, 55),
 		Orange = Color3.fromRGB(255, 145, 40),
@@ -1090,29 +1105,10 @@ local function createNametag(player, character)
 		Gold = Color3.fromRGB(255, 195, 45),
 	}
 
-	-- Named name colors. The same names can be sent by the remote config.
-	local namedNameColors = {
-		Red = Color3.fromRGB(255, 60, 60),
-		Crimson = Color3.fromRGB(220, 35, 55),
-		Orange = Color3.fromRGB(255, 145, 40),
-		Amber = Color3.fromRGB(255, 175, 35),
-		Yellow = Color3.fromRGB(255, 225, 55),
-		Lime = Color3.fromRGB(150, 255, 45),
-		Green = Color3.fromRGB(60, 255, 110),
-		Emerald = Color3.fromRGB(35, 210, 125),
-		Cyan = Color3.fromRGB(40, 235, 255),
-		SkyBlue = Color3.fromRGB(70, 190, 255),
-		Blue = Color3.fromRGB(70, 130, 255),
-		RoyalBlue = Color3.fromRGB(55, 85, 235),
-		Purple = Color3.fromRGB(170, 80, 255),
-		Violet = Color3.fromRGB(125, 70, 255),
-		Magenta = Color3.fromRGB(235, 55, 255),
-		Pink = Color3.fromRGB(255, 70, 210),
-		Rose = Color3.fromRGB(255, 80, 135),
-		White = Color3.fromRGB(255, 255, 255),
-		Black = Color3.fromRGB(0, 0, 0),
-		Gold = Color3.fromRGB(255, 195, 45),
-	}
+	-- One preloaded palette is used by BOTH custom name colors and borders.
+	-- Discord/GitHub only needs to send the color name (for example "Gold").
+	local namedBorderColors = NAMED_COLORS
+	local namedNameColors = NAMED_COLORS
 
 	local rainbowColors = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
@@ -1333,7 +1329,7 @@ local function createNametag(player, character)
 	local requestedNameColor = tostring(tagConfig.NameColor or "White")
 	local requestedNameColorLower = requestedNameColor:lower()
 	if requestedNameColorLower ~= "rainbow" then
-		local customNameColor = namedNameColors[requestedNameColor]
+		local customNameColor = getPreloadedColor(requestedNameColor)
 			or parseBorderColor(requestedNameColor)
 		nameLabel.TextColor3 = customNameColor or SETTINGS.White
 	else
@@ -1975,7 +1971,7 @@ local function createNametag(player, character)
 			else
 				ownerNameGradient.Enabled = false
 				-- Keep the selected static color visible when Rainbow is disabled.
-				local staticNameColor = namedNameColors[tostring(tagConfig.NameColor or "White")]
+				local staticNameColor = getPreloadedColor(tagConfig.NameColor)
 					or parseBorderColor(tagConfig.NameColor)
 				nameLabel.TextColor3 = staticNameColor or SETTINGS.White
 			end
