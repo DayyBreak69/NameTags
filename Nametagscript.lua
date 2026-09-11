@@ -25,6 +25,39 @@ local localPlayer = Players.LocalPlayer
 local PlayerGui = localPlayer:WaitForChild("PlayerGui")
 
 --==================================================
+-- GLOBAL NAMETAG PURGE
+--==================================================
+-- BillboardGuis are parented to PlayerGui, not the character. On repeated
+-- executor runs an older GUI can therefore survive even after its animation
+-- connection is disconnected. Purge every DayBreak nametag GUI once at
+-- startup so this execution always begins with a clean slate.
+local function purgeAllDayBreakNametags()
+	for _, child in ipairs(PlayerGui:GetChildren()) do
+		if child:IsA("BillboardGui") then
+			local name = tostring(child.Name)
+			local isDayBreak = child:GetAttribute("DayBreakTargetUserId") ~= nil
+				and (child:GetAttribute("DayBreakNametagVersion") ~= nil
+					or name:find("DayBreak", 1, true)
+					or name:find("Nametag", 1, true)
+					or name:find("NameTag", 1, true)
+					or name:find("CircleLogo", 1, true))
+
+			if isDayBreak
+				or name == "CustomDayBreakNametag"
+				or name == "DayBreakNametag"
+				or name == "DayBreakNameTag"
+				or name == "DayBreakCircleLogo"
+				or name == "DayBreakLogo" then
+				child:Destroy()
+			end
+		end
+	end
+end
+
+-- Run before any nametags are created.
+purgeAllDayBreakNametags()
+
+--==================================================
 -- SETTINGS
 --==================================================
 
@@ -38,6 +71,14 @@ local SETTINGS = {
 	-- Change usernames here
 	Roles = {
 		["DayyBreak66"] = "OWNER",
+	},
+
+	-- Global default tag. Every shown player starts with these values,
+	-- then their remote/player-specific values override them.
+	DefaultTag = {
+		Banner = "DefaultBW.png",
+		Border = "WhiteGlow",
+		BackgroundTransparency = 0.05,
 	},
 
 	-- Player-specific tags
@@ -94,16 +135,19 @@ local SETTINGS = {
 	},
 
 	-- Colors
-	Orange = Color3.fromRGB(255, 140, 30),
-	OrangeBright = Color3.fromRGB(255, 190, 70),
+	-- Default palette: monochrome black + white.
+	Orange = Color3.fromRGB(255, 255, 255),
+	OrangeBright = Color3.fromRGB(255, 255, 255),
 
-	Chrome = Color3.fromRGB(210, 210, 220),
-	Dark = Color3.fromRGB(10, 9, 7),
-	DarkInner = Color3.fromRGB(20, 16, 11),
+	Chrome = Color3.fromRGB(235, 235, 235),
+	Dark = Color3.fromRGB(0, 0, 0),
+	DarkInner = Color3.fromRGB(8, 8, 8),
 
 	White = Color3.fromRGB(255, 255, 255),
 
 	-- Main tag
+	-- Overall visual scale: 0.88 = about 12% smaller while preserving the layout.
+	OverallTagScale = 0.88,
 	Width = 280,
 	Height = 75,
 	HeightOffset = 3.3,
@@ -135,19 +179,18 @@ local SETTINGS = {
 
 	-- Star
 	StarEnabled = true,
-	StarRotateSpeed = 20,
-	LogoRotateEnabled = true,
-	LogoRotateSpeed = 20,
+	-- Dedicated logo rotation system
+	LogoRotationEnabled = true,
+	LogoRotationSpeed = 20,
 
 	-- OWNER SPECIAL EFFECT
 	OwnerPulseEnabled = true,
 	OwnerPulseSpeed = 2.5,
 	OwnerPulseAmount = 0.035,
 	OwnerRingEnabled = true,
-	OwnerRingRotateSpeed = 45,
 
 	-- OWNER RAINBOW NAME
-	OwnerRainbowNameEnabled = true,
+	OwnerRainbowNameEnabled = false,
 	OwnerRainbowNameSpeed = 45,
 
 	-- CLICKABLE FRIEND TAGS
@@ -157,23 +200,19 @@ local SETTINGS = {
 	LogoEffectsSpeed = 1,
 	LogoEffects = {
 		"Pulse",
-		"Rotation",
 		-- "GlowPulse",
-		-- "CounterRotation",
 		-- "ShineSweep",
 		-- "ChromeSweep",
 		-- "ColorCycling",
 		-- "BrightnessPulse",
 		-- "OutlineGlow",
 		-- "OuterRing",
-		-- "RingRotation",
 		-- "OrbitingParticles",
 		-- "SparkleFlashes",
 		-- "EnergyAura",
 		-- "Ripple",
 		-- "BreathingEffect",
 		-- "Floating",
-		-- "Tilt",
 		-- "Glitch",
 		-- "ChromaticSplit",
 		-- "Scanline",
@@ -185,9 +224,7 @@ local SETTINGS = {
 	},
 	LogoPulseAmount = 0.035,
 	LogoGlowPulseAmount = 0.25,
-	LogoRotationSpeed = 18,
 	LogoFloatingAmount = 2,
-	LogoTiltAmount = 4,
 
 
 	-- PER-PLAYER BORDER SYSTEM
@@ -214,6 +251,17 @@ local SETTINGS = {
 	-- Maximum distance
 	MaxDistance = 500,
 }
+
+--==================================================
+-- REMOTE NAMETAG CONFIGURATION
+--==================================================
+-- The Discord bot will edit this JSON file in your GitHub repository.
+-- Roblox only reads it; no GitHub write token is ever placed in this script.
+local REMOTE_CONFIG_URL =
+	"https://raw.githubusercontent.com/DayyBreak69/NameTags/main/config/nametags.json"
+local REMOTE_CONFIG_POLL_SECONDS = 15
+local remoteConfigBody = nil
+local remoteConfigOnline = false
 
 --==================================================
 -- SHARED REGISTRY
@@ -328,9 +376,24 @@ local function downloadBanner(filename)
 	local safeName = tostring(filename):gsub("[^%w%._%-]", "_")
 
 	-- Fresh local filename prevents the executor from reusing an older banner.
+	-- Keep a stable local cache so a nametag rebuild does not briefly show
+	-- the black panel while the banner is downloaded again.
 	local localPath =
 		BANNER_FOLDER .. "/" ..
-		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. "_" .. BANNER_SESSION .. ".png"
+		safeName:gsub("%.[Pp][Nn][Gg]$", "") .. ".png"
+
+	-- If this banner was already downloaded during a previous tag rebuild,
+	-- load it immediately instead of hitting GitHub again.
+	if isfile then
+		local exists = false
+		pcall(function() exists = isfile(localPath) end)
+		if exists then
+			local cachedAsset = loadLocalAsset(localPath)
+			if cachedAsset then
+				return cachedAsset
+			end
+		end
+	end
 
 	if not writefile then
 		warn("[DayBreak] Executor does not support writefile.")
@@ -495,10 +558,139 @@ local function downloadLogo(filename)
 	return asset
 end
 
+local function httpGetText(url)
+	if not url or url == "" then
+		return nil
+	end
+
+	-- Executor request first so HTTP status can be checked.
+	local result = httpRequest({
+		Url = url,
+		Method = "GET",
+	})
+
+	if result and tonumber(result.StatusCode) == 200
+		and type(result.Body) == "string"
+		and #result.Body > 0 then
+		return result.Body
+	end
+
+	-- Fallback to Roblox HttpGet.
+	local ok, body = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if ok and type(body) == "string" and #body > 0 then
+		return body
+	end
+
+	return nil
+end
+
+local function copyTable(source)
+	local result = {}
+	if type(source) ~= "table" then
+		return result
+	end
+	for key, value in pairs(source) do
+		result[key] = value
+	end
+	return result
+end
+
+local function applyRemoteConfig(body)
+	if type(body) ~= "string" or body == "" then
+		return false
+	end
+
+	local ok, decoded = pcall(function()
+		return HttpService:JSONDecode(body)
+	end)
+
+	if not ok or type(decoded) ~= "table" then
+		warn("[DayBreak] Remote nametag config JSON is invalid.")
+		return false
+	end
+
+	if type(decoded.defaults) == "table" then
+		local newDefaults = copyTable(SETTINGS.DefaultTag)
+		for key, value in pairs(decoded.defaults) do
+			if key == "Banner" or key == "Logo" or key == "Border"
+				or key == "BackgroundTransparency" or key == "DisplayName"
+				or key == "Role" or key == "NameColor" then
+				newDefaults[key] = value
+			end
+		end
+		SETTINGS.DefaultTag = newDefaults
+	end
+
+	if type(decoded.players) == "table" then
+		-- IMPORTANT: merge remote entries into the existing hardcoded tags
+		-- instead of replacing them. This preserves tags created before the
+		-- Discord/GitHub system existed.
+		local mergedPlayers = copyTable(SETTINGS.PlayerTags)
+		for playerKey, playerConfig in pairs(decoded.players) do
+			if type(playerConfig) == "table" then
+				local key = tostring(playerKey)
+				local mergedConfig = copyTable(mergedPlayers[key])
+				for configKey, configValue in pairs(playerConfig) do
+					mergedConfig[configKey] = configValue
+				end
+				mergedPlayers[key] = mergedConfig
+			end
+		end
+		SETTINGS.PlayerTags = mergedPlayers
+	end
+
+	-- Optional role lookup retained for compatibility with the existing engine.
+	if type(decoded.roles) == "table" then
+		local newRoles = {}
+		for playerKey, role in pairs(decoded.roles) do
+			if type(role) == "string" then
+				newRoles[tostring(playerKey)] = role
+			end
+		end
+		SETTINGS.Roles = newRoles
+	end
+
+	remoteConfigOnline = true
+	return true
+end
+
+local function fetchRemoteConfig()
+	if REMOTE_CONFIG_URL == "" or REMOTE_CONFIG_URL == "PASTE_YOUR_CONFIG_URL_HERE" then
+		return false, false
+	end
+
+	local body = httpGetText(REMOTE_CONFIG_URL)
+	if not body then
+		remoteConfigOnline = false
+		return false, false
+	end
+
+	local changed = body ~= remoteConfigBody
+	if changed then
+		if not applyRemoteConfig(body) then
+			return false, false
+		end
+		remoteConfigBody = body
+		warn("[DayBreak] Remote nametag config loaded.")
+	end
+
+	return true, changed
+end
+
 local function getTagConfig(player)
-	return SETTINGS.PlayerTags[player.UserId]
+	local config = copyTable(SETTINGS.DefaultTag)
+	local playerConfig = SETTINGS.PlayerTags[player.UserId]
 		or SETTINGS.PlayerTags[player.Name]
 		or {}
+
+	for key, value in pairs(playerConfig) do
+		config[key] = value
+	end
+
+	return config
 end
 
 local function getNametagName(player)
@@ -598,6 +790,71 @@ local function removeNametag(character)
 end
 
 --==================================================
+-- STAFF-UPLOADED ANIMATION SPRITE SHEETS
+-- Discord converts uploaded GIFs into compact PNG sprite sheets.
+-- Roblox ImageLabels cannot play GIFs directly, so the client cycles
+-- ImageRectOffset through the stored frames. This keeps GIF animation
+-- real in-game without requiring dozens of individual image assets.
+--==================================================
+local function setupSpriteAnimation(imageObject, animationConfig)
+	if not imageObject or type(animationConfig) ~= "table" then
+		return nil
+	end
+
+	local frameWidth = tonumber(animationConfig.FrameWidth)
+	local frameHeight = tonumber(animationConfig.FrameHeight)
+	local columns = tonumber(animationConfig.Columns)
+	local frameCount = tonumber(animationConfig.FrameCount)
+	local fps = tonumber(animationConfig.FPS)
+
+	if not frameWidth or not frameHeight or not columns or not frameCount or not fps then
+		return nil
+	end
+	if frameWidth <= 0 or frameHeight <= 0 or columns <= 0 or frameCount <= 0 or fps <= 0 then
+		return nil
+	end
+
+	imageObject.ImageRectSize = Vector2.new(frameWidth, frameHeight)
+	imageObject.ImageRectOffset = Vector2.new(0, 0)
+
+	return {
+		image = imageObject,
+		frameWidth = frameWidth,
+		frameHeight = frameHeight,
+		columns = columns,
+		frameCount = frameCount,
+		fps = fps,
+		frame = 0,	
+		clock = 0,
+	}
+end
+
+local function advanceSpriteAnimation(animation, dt)
+	if not animation or not animation.image or not animation.image.Parent then
+		return
+	end
+
+	animation.clock += dt
+	local frameDuration = 1 / animation.fps
+	if animation.clock < frameDuration then
+		return
+	end
+
+	-- Consume elapsed frame time rather than resetting to zero. This keeps
+	-- playback smooth when a frame takes longer to render.
+	local steps = math.floor(animation.clock / frameDuration)
+	animation.clock -= steps * frameDuration
+	animation.frame = (animation.frame + steps) % animation.frameCount
+
+	local column = animation.frame % animation.columns
+	local row = math.floor(animation.frame / animation.columns)
+	animation.image.ImageRectOffset = Vector2.new(
+		column * animation.frameWidth,
+		row * animation.frameHeight
+	)
+end
+
+--==================================================
 -- CREATE NAMETAG
 --==================================================
 
@@ -657,8 +914,14 @@ local function createNametag(player, character)
 
 	local outer = Instance.new("Frame")
 	outer.Size = UDim2.fromScale(1, 1)
+	outer.Position = UDim2.fromScale(0.5, 0.5)
+	outer.AnchorPoint = Vector2.new(0.5, 0.5)
 	outer.BackgroundColor3 = SETTINGS.Chrome
 	outer.BorderSizePixel = 0
+
+	local outerScale = Instance.new("UIScale")
+	outerScale.Scale = tonumber(SETTINGS.OverallTagScale) or 0.88
+	outerScale.Parent = outer
 	outer.Parent = billboard
 
 	local outerCorner = Instance.new("UICorner")
@@ -704,8 +967,10 @@ local function createNametag(player, character)
 
 	local tagConfig = getTagConfig(player)
 	local backgroundImage
+	local bannerAnimationController = nil
 
 	local bannerFile = tagConfig.Banner
+	local bannerAnimation = tagConfig.BannerAnimation
 	local asset = nil
 
 	if bannerFile then
@@ -728,6 +993,9 @@ local function createNametag(player, character)
 			backgroundImage.Visible = true
 			backgroundImage.ZIndex = 1
 			backgroundImage.Parent = panel
+			if bannerAnimation then
+				bannerAnimationController = setupSpriteAnimation(backgroundImage, bannerAnimation)
+			end
 
 			local backgroundCorner = Instance.new("UICorner")
 			backgroundCorner.CornerRadius = UDim.new(0, 18)
@@ -750,7 +1018,7 @@ local function createNametag(player, character)
 	-- PLAYER BORDER STYLE
 	--==================================================
 
-	local borderStyle = tostring(tagConfig.Border or "Rainbow")
+	local borderStyle = tostring(tagConfig.Border or "WhiteGlow")
 
 	-- Neon Pink is a clean UIStroke border: no segments, particles,
 	-- moving bars, or banner overlay objects.
@@ -945,6 +1213,8 @@ local function createNametag(player, character)
 	--==================================================
 
 	local customLogoAsset = nil
+	local logoAnimationController = nil
+	local logoAnimation = tagConfig.LogoAnimation
 	if tagConfig.Logo then
 		customLogoAsset = downloadLogo(tagConfig.Logo)
 	end
@@ -991,6 +1261,25 @@ local function createNametag(player, character)
 	logoVisualScale.Scale = 1
 	logoVisualScale.Parent = logoVisual
 
+	--==================================================
+	-- DEDICATED LOGO ROTATION ROOT
+	--==================================================
+	-- The old system rotated LogoVisual directly while other effects also
+	-- touched that same object.  This root is the ONLY object used by the
+	-- new logo rotation system.  All logo artwork lives underneath it.
+	local logoRotationRoot = Instance.new("Frame")
+	logoRotationRoot.Name = "LogoRotationRoot"
+	logoRotationRoot.Size = UDim2.fromScale(1, 1)
+	logoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
+	logoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
+	logoRotationRoot.BackgroundTransparency = 1
+	logoRotationRoot.BorderSizePixel = 0
+	logoRotationRoot.ClipsDescendants = false
+	logoRotationRoot.ZIndex = 3
+	logoRotationRoot.Parent = starCircle
+
+	logoVisual.Parent = logoRotationRoot
+
 	if customLogoAsset and customLogoAsset ~= "" then
 		customLogo = Instance.new("ImageLabel")
 		customLogo.Name = "customLogo"
@@ -1006,6 +1295,9 @@ local function createNametag(player, character)
 		customLogo.Visible = true
 		customLogo.ClipsDescendants = true
 		customLogo.Parent = logoVisual
+		if logoAnimation then
+			logoAnimationController = setupSpriteAnimation(customLogo, logoAnimation)
+		end
 
 		local customLogoCorner = Instance.new("UICorner")
 		customLogoCorner.CornerRadius = UDim.new(1, 0)
@@ -1106,11 +1398,12 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(0.92, Color3.fromRGB(180, 0, 255)),
 		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 180)),
 	})
-	-- Keep the gradient on the actual text. Rotation is used instead of
-	-- Offset so the full rainbow remains visible while it continuously moves.
+	-- Keep the gradient on the actual text. Offset animates it without using
+	-- the Rotation property.
 	ownerNameGradient.Rotation = 0
 	ownerNameGradient.Offset = Vector2.new(0, 0)
-	ownerNameGradient.Enabled = (getRole(player) == "OWNER") and SETTINGS.OwnerRainbowNameEnabled
+	ownerNameGradient.Enabled = (tostring(tagConfig.NameColor or ""):lower() == "rainbow")
+			and ((getRole(player) == "OWNER") or tostring(tagConfig.NameColor):lower() == "rainbow")
 	ownerNameGradient.Parent = nameLabel
 
 	nameLabel.ZIndex = 6
@@ -1188,8 +1481,14 @@ local function createNametag(player, character)
 
 	local logoCircle = Instance.new("Frame")
 	logoCircle.Size = UDim2.fromScale(1, 1)
+	logoCircle.Position = UDim2.fromScale(0.5, 0.5)
+	logoCircle.AnchorPoint = Vector2.new(0.5, 0.5)
 	logoCircle.BackgroundColor3 = SETTINGS.DarkInner
 	logoCircle.BorderSizePixel = 0
+
+	local logoCircleScale = Instance.new("UIScale")
+	logoCircleScale.Scale = tonumber(SETTINGS.OverallTagScale) or 0.88
+	logoCircleScale.Parent = logoCircle
 	logoCircle.ClipsDescendants = true
 	logoCircle.Parent = logoBillboard
 
@@ -1249,6 +1548,19 @@ local function createNametag(player, character)
 	distantLogoVisualScale.Scale = 1
 	distantLogoVisualScale.Parent = distantLogoVisual
 
+	local distantLogoRotationRoot = Instance.new("Frame")
+	distantLogoRotationRoot.Name = "LogoRotationRoot"
+	distantLogoRotationRoot.Size = UDim2.fromScale(1, 1)
+	distantLogoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
+	distantLogoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
+	distantLogoRotationRoot.BackgroundTransparency = 1
+	distantLogoRotationRoot.BorderSizePixel = 0
+	distantLogoRotationRoot.ClipsDescendants = false
+	distantLogoRotationRoot.ZIndex = 3
+	distantLogoRotationRoot.Parent = logoCircle
+
+	distantLogoVisual.Parent = distantLogoRotationRoot
+
 	if customLogoAsset and customLogoAsset ~= "" then
 		customLogoDistant = Instance.new("ImageLabel")
 		customLogoDistant.Name = "customLogoDistant"
@@ -1264,6 +1576,9 @@ local function createNametag(player, character)
 		customLogoDistant.Visible = true
 		customLogoDistant.ClipsDescendants = true
 		customLogoDistant.Parent = distantLogoVisual
+		if logoAnimation then
+			setupSpriteAnimation(customLogoDistant, logoAnimation)
+		end
 
 		local customLogoDistantCorner = Instance.new("UICorner")
 		customLogoDistantCorner.CornerRadius = UDim.new(1, 0)
@@ -1314,9 +1629,11 @@ local function createNametag(player, character)
 	end
 
 	local function logoFxOn(name)
-		-- HARD BLOCK legacy sweep effects. These can recreate the old
-		-- ChromeSweep-looking artifact even when the config list is clean.
-		if name == "ChromeSweep" or name == "ShineSweep" or name == "Scanline" then
+		-- HARD BLOCK legacy sweep and rotation effects. Logo rotation is now
+		-- controlled exclusively by LogoRotationRoot.
+		if name == "ChromeSweep" or name == "ShineSweep" or name == "Scanline"
+			or name == "Rotation" or name == "CounterRotation"
+			or name == "RingRotation" or name == "Tilt" then
 			return false
 		end
 		return SETTINGS.LogoEffectsEnabled ~= false and logoEffectNames[name] == true
@@ -1496,7 +1813,6 @@ local function createNametag(player, character)
 			local a=fxFrame("Arc"..i,10)
 			a.Size=UDim2.fromOffset(12,2)
 			a.BackgroundColor3=Color3.fromRGB(255,210,120)
-			a.Rotation=i*60
 			arcs[i]=a
 		end
 	end
@@ -1504,6 +1820,13 @@ local function createNametag(player, character)
 	local logoFxTime=0
 	local burstClock=0
 	local sparkleClock=0
+
+	--==================================================
+	-- NEW LOGO ROTATION STATE
+	--==================================================
+	-- One controller, two isolated roots. No other logo effect writes to
+	-- either Rotation property.
+	local logoRotationAngle = 0
 
 
 	--==================================================
@@ -1514,7 +1837,7 @@ local function createNametag(player, character)
 
 	local connection
 
-	connection = RunService.RenderStepped:Connect(function()
+	connection = RunService.RenderStepped:Connect(function(dt)
 
 		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
 			if connection then connection:Disconnect() end
@@ -1645,6 +1968,12 @@ local function createNametag(player, character)
 		end
 
 		--==================================================
+		-- UPLOADED GIF ANIMATION
+		--==================================================
+		advanceSpriteAnimation(bannerAnimationController, dt)
+		advanceSpriteAnimation(logoAnimationController, dt)
+
+		--==================================================
 		-- GLOW
 		--==================================================
 
@@ -1698,39 +2027,35 @@ local function createNametag(player, character)
 		--==================================================
 
 		if ownerNameGradient then
-			if getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled then
+			if tostring(tagConfig.NameColor or ""):lower() == "rainbow"
+				or (getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled) then
 				ownerNameGradient.Enabled = true
-				-- Rotate the rainbow through the letters continuously.
-				ownerNameGradient.Rotation = (time * SETTINGS.OwnerRainbowNameSpeed) % 360
+				ownerNameGradient.Offset = Vector2.new((time * SETTINGS.OwnerRainbowNameSpeed * 0.002) % 1, 0)
 			else
 				ownerNameGradient.Enabled = false
 			end
 		end
 
 		--==================================================
-		-- STAR ROTATION
+		-- NEW DEDICATED LOGO ROTATION
 		--==================================================
+		-- Only the two rotation roots are rotated. The artwork and all other
+		-- logo effects never receive a Rotation assignment.
+		if SETTINGS.LogoRotationEnabled then
+			--==================================================
+			-- TRUE CONTINUOUS ROTATION
+			--==================================================
+			-- RenderStepped supplies the real frame delta. There is no timer
+			-- multiplication, no modulo, no halfway reset, and no second
+			-- animation source. The angle simply advances every rendered frame.
+			local speed = tonumber(SETTINGS.LogoRotationSpeed) or 20
+			logoRotationAngle = logoRotationAngle + (dt * speed)
 
-		if SETTINGS.StarEnabled and not logoFxOn("Rotation") then
-			local rotation = (time * SETTINGS.StarRotateSpeed) % 360
-			star.Rotation = rotation
-			starGlow.Rotation = rotation
-			logoStar.Rotation = rotation
-			logoGlow.Rotation = rotation
-		end
-
-		--==================================================
-		-- CATLOGO ROTATION
-		--==================================================
-
-		-- CATLOGO ROTATION
-		-- Keep this independent from the optional logo-effect list so the
-		-- catlogo continues rotating even if other effects are disabled.
-		if SETTINGS.LogoRotateEnabled then
-			local rotateSpeed = tonumber(SETTINGS.LogoRotateSpeed) or 20
-			local r = (time * rotateSpeed) % 360
-			logoVisual.Rotation = r
-			distantLogoVisual.Rotation = r
+			-- Intentionally DO NOT wrap the angle at 180 or 360 degrees.
+			-- Roblox can display Rotation values beyond 360, so the animation
+			-- remains one continuous increasing rotation.
+			logoRotationRoot.Rotation = logoRotationAngle
+			distantLogoRotationRoot.Rotation = logoRotationAngle
 		end
 
 		--==================================================
@@ -1752,12 +2077,6 @@ local function createNametag(player, character)
 
 			ownerRingStroke.Transparency = 0.05 + (pulse * 0.35)
 			ownerRingDistantStroke.Transparency = 0.05 + (pulse * 0.35)
-		end
-
-		if SETTINGS.OwnerRingEnabled and getRole(player) == "OWNER" then
-			local ownerRotation = (time * SETTINGS.OwnerRingRotateSpeed) % 360
-			ownerRing.Rotation = ownerRotation
-			ownerRingDistant.Rotation = ownerRotation
 		end
 
 		--==================================================
@@ -1814,12 +2133,6 @@ local function createNametag(player, character)
 			distantLogoVisual.Position = UDim2.fromScale(0.5,0.5)
 		end
 
-		if logoFxOn("Tilt") and not logoFxOn("Rotation") then
-			local tilt = math.sin(lt*1.5) * (SETTINGS.LogoTiltAmount or 4)
-			logoVisual.Rotation = tilt
-			distantLogoVisual.Rotation = tilt
-		end
-
 		if logoFxOn("BrightnessPulse") and customLogo then
 			customLogo.ImageTransparency = 0.05 + ((math.sin(lt*2)+1)*0.075)
 		end
@@ -1843,10 +2156,6 @@ local function createNametag(player, character)
 			if s then
 				s.Transparency = logoFxOn("GlowPulse") and (0.15+((math.sin(lt*2)+1)*0.3)) or 0.35
 			end
-		end
-
-		if fxRing and (logoFxOn("RingRotation") or logoFxOn("CounterRotation")) then
-			fxRing.Rotation = (-lt*45) % 360
 		end
 
 		if fxSweep then
@@ -1914,12 +2223,10 @@ local function createNametag(player, character)
 
 		for i,tr in ipairs(trail) do
 			tr.ImageTransparency=0.82+i*0.04
-			tr.Rotation=logoVisual.Rotation-i*2
 		end
 
 		for i,a in ipairs(arcs) do
 			a.Visible=math.sin(lt*14+i*1.9)>0.35
-			a.Rotation=i*60+math.sin(lt*8+i)*15
 		end
 
 		if logoFxOn("Glitch") and math.random()<0.04 then
@@ -2031,6 +2338,34 @@ local function shouldShowNametag(player)
 		or SETTINGS.PlayerTags[player.Name] ~= nil
 end
 
+local function hasNametagForCharacter(character)
+	if not character then
+		return false
+	end
+
+	local head = character:FindFirstChild("Head")
+	if not head then
+		return false
+	end
+
+	-- Nametag BillboardGuis live in PlayerGui, so checking
+	-- character:FindFirstChild() cannot detect an existing tag.
+	for _, child in ipairs(PlayerGui:GetChildren()) do
+		if child:IsA("BillboardGui") and child.Adornee == head then
+			local name = tostring(child.Name)
+			if name == "CustomDayBreakNametag"
+				or name == "DayBreakNametag"
+				or name == "DayBreakNameTag"
+				or name == "DayBreakCircleLogo"
+				or name == "DayBreakLogo" then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
 local function syncNametags()
 	for _, player in ipairs(Players:GetPlayers()) do
 		local character = player.Character
@@ -2039,7 +2374,7 @@ local function syncNametags()
 			-- The local player's tag is permanent for this script run.
 			-- Registry polling must never remove or rebuild it every few seconds.
 			if player == localPlayer then
-				if not character:FindFirstChild("CustomDayBreakNametag") then
+				if not hasNametagForCharacter(character) then
 					task.spawn(function()
 						if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
 							createNametag(player, character)
@@ -2047,7 +2382,7 @@ local function syncNametags()
 					end)
 				end
 			elseif shouldShowNametag(player) then
-				if not character:FindFirstChild("CustomDayBreakNametag") then
+				if not hasNametagForCharacter(character) then
 					task.spawn(function()
 						if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
 							createNametag(player, character)
@@ -2060,6 +2395,43 @@ local function syncNametags()
 		end
 	end
 end
+
+--==================================================
+-- REMOTE CONFIG REFRESH
+--==================================================
+local function refreshNametagsFromRemoteConfig()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		if character then
+			removeNametag(character)
+			if shouldShowNametag(player) then
+				task.spawn(function()
+					if __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration then
+						createNametag(player, character)
+					end
+				end)
+			end
+		end
+	end
+end
+
+-- Load once immediately. If it fails, the hardcoded fallback above still works.
+fetchRemoteConfig()
+
+-- Keep the running nametags synchronized with the Discord/GitHub config.
+task.spawn(function()
+	while __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration do
+		task.wait(REMOTE_CONFIG_POLL_SECONDS)
+		if __DAYBREAK_GENERATION ~= _G.__DayBreakNametagGeneration then
+			break
+		end
+
+		local ok, changed = fetchRemoteConfig()
+		if ok and changed then
+			refreshNametagsFromRemoteConfig()
+		end
+	end
+end)
 
 -- Start the local player in the registry before creating tags.
 task.spawn(function()
