@@ -891,7 +891,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV13")
+	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV14")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1107,14 +1107,14 @@ local function createNametag(player, character)
 			borderGradient.Name = "RainbowBorderGradient"
 			borderGradient.Color = rainbowColors
 			borderGradient.Rotation = 0
-			borderGradient.TileMode = Enum.GradientTileMode.Clamp
+			borderGradient.TileMode = Enum.GradientTileMode.Repeat
 			borderGradient.Parent = borderStroke
 
 			borderGlowGradient = Instance.new("UIGradient")
 			borderGlowGradient.Name = "RainbowBorderGlowGradient"
 			borderGlowGradient.Color = rainbowColors
 			borderGlowGradient.Rotation = 0
-			borderGlowGradient.TileMode = Enum.GradientTileMode.Clamp
+			borderGlowGradient.TileMode = Enum.GradientTileMode.Repeat
 			borderGlowGradient.Parent = borderGlow
 			return
 		end
@@ -1910,16 +1910,20 @@ local function createNametag(player, character)
 		--==================================================
 
 		if SETTINGS.RainbowBannerEnabled and tostring(borderStyle):lower() == "rainbow" then
-			-- Rotate the full rainbow instead of sliding the gradient.
-			-- This avoids the Offset seam/clamp that can temporarily make
-			-- the border appear as one solid color before wrapping.
-			local rotation = (time * SETTINGS.RainbowBannerSpeed) % 360
-			if borderGradient then
-				borderGradient.Rotation = rotation
-			end
-			if borderGlowGradient then
-				borderGlowGradient.Rotation = rotation
-			end
+			-- Smooth back-and-forth rainbow sweep.
+			-- The phase travels left -> right, then right -> left,
+			-- continuously repeating without jumping or rotating the border.
+			local phase = (time * SETTINGS.RainbowBannerSpeed * 0.0009) % 2
+		if phase > 1 then
+			phase = 2 - phase
+		end
+		local offsetX = -0.25 + (phase * 0.50)
+		if borderGradient then
+			borderGradient.Offset = Vector2.new(offsetX, 0)
+		end
+		if borderGlowGradient then
+			borderGlowGradient.Offset = Vector2.new(offsetX, 0)
+		end
 		end
 
 		--==================================================
