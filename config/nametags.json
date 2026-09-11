@@ -17,7 +17,8 @@
       "Role": "Owner"
     },
     "rightright_r": {
-      "Banner": "rightright_r_banner_20260911134228.png"
+      "Banner": "rightright_r_banner_20260911134228.png",
+      "Role": "ADMIN"
     }
   }
 }
