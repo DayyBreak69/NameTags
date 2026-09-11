@@ -911,6 +911,9 @@ local function createNametag(player, character)
 	-- OUTER CHROME
 	--==================================================
 
+	local tagConfig = getTagConfig(player)
+	local borderStyle = tostring(tagConfig.Border or "WhiteGlow")
+
 	local outer = Instance.new("Frame")
 	outer.Size = UDim2.fromScale(1, 1)
 	outer.Position = UDim2.fromScale(0.5, 0.5)
@@ -964,7 +967,6 @@ local function createNametag(player, character)
 	-- PLAYER-SPECIFIC BACKGROUND
 	--==================================================
 
-	local tagConfig = getTagConfig(player)
 	local backgroundImage
 	local bannerAnimationController = nil
 
@@ -1016,8 +1018,6 @@ local function createNametag(player, character)
 	-- PLAYER BORDER STYLE
 	--==================================================
 
-	local borderStyle = tostring(tagConfig.Border or "WhiteGlow")
-
 	-- Neon Pink is a clean UIStroke border: no segments, particles,
 	-- moving bars, or banner overlay objects.
 	if borderStyle == "NeonPink" then
@@ -1057,18 +1057,18 @@ local function createNametag(player, character)
 	end
 
 	--==================================================
-	-- RAINBOW BORDER — EXACT WHITEGLOW GEOMETRY
+	-- RAINBOW BORDER — EXACT OUTER TAG SIZE
 	--==================================================
-	-- IMPORTANT: Rainbow is built on the SAME `panel` Frame that owns
-	-- WhiteGlow. This guarantees identical bounds, center, corner radius,
-	-- and UIScale behavior. There is no second border rectangle.
+	-- Rainbow is intentionally attached to `outer`, the exact same
+	-- Frame that defines the visible nametag's full 1:1 bounds.
+	-- No inset rectangle, offset, or separate scaling is used.
 
 	local rainbowBorder = Instance.new("UIStroke")
 	rainbowBorder.Name = "RainbowBorder"
 	rainbowBorder.Thickness = 3
-	rainbowBorder.Transparency = 0.02
+	rainbowBorder.Transparency = 0
 	rainbowBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowBorder.Parent = panel
+	rainbowBorder.Parent = outer
 
 	local rainbowGradient = Instance.new("UIGradient")
 	rainbowGradient.Name = "RainbowGradient"
@@ -1081,8 +1081,6 @@ local function createNametag(player, character)
 		ColorSequenceKeypoint.new(0.83, Color3.fromRGB(127, 0, 255)),
 		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
 	})
-	rainbowGradient.Rotation = 0
-	rainbowGradient.Offset = Vector2.new(0, 0)
 	rainbowGradient.Parent = rainbowBorder
 
 	local rainbowGlow = Instance.new("UIStroke")
@@ -1090,13 +1088,11 @@ local function createNametag(player, character)
 	rainbowGlow.Thickness = 8
 	rainbowGlow.Transparency = 0.72
 	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rainbowGlow.Parent = panel
+	rainbowGlow.Parent = outer
 
 	local rainbowGlowGradient = Instance.new("UIGradient")
 	rainbowGlowGradient.Name = "RainbowGlowGradient"
 	rainbowGlowGradient.Color = rainbowGradient.Color
-	rainbowGlowGradient.Rotation = 0
-	rainbowGlowGradient.Offset = Vector2.new(0, 0)
 	rainbowGlowGradient.Parent = rainbowGlow
 
 	local function setRainbowBorderVisible(visible)
