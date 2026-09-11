@@ -58,6 +58,8 @@ end
 purgeAllDayBreakNametags()
 
 --==================================================
+-- V5 STABILITY PATCH: restore OWNER rainbow + center logo rotation
+--==================================================
 -- SETTINGS
 --==================================================
 
@@ -100,8 +102,8 @@ local SETTINGS = {
 			Banner = "Daybreak.png",
 
 			Logo = "Catlogo.png",
-
-
+			Border = "Rainbow",
+			NameColor = "Rainbow",
 			BackgroundTransparency = 0.05,
 		},
 		["xOmqhayleealt"] = {
@@ -190,7 +192,7 @@ local SETTINGS = {
 	OwnerRingEnabled = true,
 
 	-- OWNER RAINBOW NAME
-	OwnerRainbowNameEnabled = false,
+	OwnerRainbowNameEnabled = true,
 	OwnerRainbowNameSpeed = 45,
 
 	-- CLICKABLE FRIEND TAGS
@@ -688,6 +690,18 @@ local function getTagConfig(player)
 
 	for key, value in pairs(playerConfig) do
 		config[key] = value
+	end
+
+	-- Preserve the original V4 OWNER look even when the remote config
+	-- does not explicitly store these two optional fields. Explicit
+	-- Discord choices still win because they are already in config.
+	if tostring(config.Role or ""):upper() == "OWNER" then
+		if config.Border == nil or tostring(config.Border) == "" then
+			config.Border = "Rainbow"
+		end
+		if config.NameColor == nil or tostring(config.NameColor) == "" then
+			config.NameColor = "Rainbow"
+		end
 	end
 
 	return config
@@ -1269,7 +1283,7 @@ local function createNametag(player, character)
 	-- new logo rotation system.  All logo artwork lives underneath it.
 	local logoRotationRoot = Instance.new("Frame")
 	logoRotationRoot.Name = "LogoRotationRoot"
-	logoRotationRoot.Size = UDim2.fromScale(1, 1)
+	logoRotationRoot.Size = UDim2.new(1, -8, 1, -8)
 	logoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
 	logoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 	logoRotationRoot.BackgroundTransparency = 1
@@ -1322,7 +1336,7 @@ local function createNametag(player, character)
 	ownerRing.Size = UDim2.new(1, -2, 1, -2)
 	ownerRing.Position = UDim2.new(0, 1, 0, 1)
 	ownerRing.ZIndex = 4
-	ownerRing.Parent = starCircle
+	ownerRing.Parent = logoRotationRoot
 
 	local ownerRingCorner = Instance.new("UICorner")
 	ownerRingCorner.CornerRadius = UDim.new(1, 0)
@@ -1550,7 +1564,7 @@ local function createNametag(player, character)
 
 	local distantLogoRotationRoot = Instance.new("Frame")
 	distantLogoRotationRoot.Name = "LogoRotationRoot"
-	distantLogoRotationRoot.Size = UDim2.fromScale(1, 1)
+	distantLogoRotationRoot.Size = UDim2.new(1, -8, 1, -8)
 	distantLogoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
 	distantLogoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 	distantLogoRotationRoot.BackgroundTransparency = 1
@@ -1603,7 +1617,7 @@ local function createNametag(player, character)
 	ownerRingDistant.Size = UDim2.new(1, -2, 1, -2)
 	ownerRingDistant.Position = UDim2.new(0, 1, 0, 1)
 	ownerRingDistant.ZIndex = 4
-	ownerRingDistant.Parent = logoCircle
+	ownerRingDistant.Parent = distantLogoRotationRoot
 
 	local ownerRingDistantCorner = Instance.new("UICorner")
 	ownerRingDistantCorner.CornerRadius = UDim.new(1, 0)
