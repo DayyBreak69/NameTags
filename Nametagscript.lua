@@ -1083,10 +1083,19 @@ local function createNametag(player, character)
 	rainbowContainer.Name = "RainbowBannerBorder"
 	rainbowContainer.BackgroundTransparency = 1
 	rainbowContainer.BorderSizePixel = 0
-	-- IMPORTANT: parent the rainbow border to the same scaled outer frame
-	-- as the nametag itself. This makes the border and tag use exactly the
-	-- same coordinate space, eliminating the previous size/offset mismatch.
-	rainbowContainer.Size = UDim2.fromScale(1, 1)
+	-- Match the procedural rainbow border to the EXACT same rectangle used
+	-- by the WhiteGlow UIStroke: the inner panel bounds.
+	--
+	-- Geometry:
+	-- outer       = full tag
+	-- orangeFrame = outer inset 3px
+	-- panel       = orangeFrame inset 3px
+	-- therefore panel is exactly 6px inset from outer on every side.
+	--
+	-- Keeping the rainbow container in outer but giving it the panel's exact
+	-- bounds makes Rainbow and WhiteGlow occupy the same visual footprint
+	-- while still allowing the rainbow segments to render outside the panel.
+	rainbowContainer.Size = UDim2.new(1, -12, 1, -12)
 	rainbowContainer.Position = UDim2.fromScale(0.5, 0.5)
 	rainbowContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 	rainbowContainer.ClipsDescendants = false
@@ -1097,7 +1106,7 @@ local function createNametag(player, character)
 	local rainbowSegments = {}
 	local RAINBOW_SEGMENT_COUNT = 61
 	local RAINBOW_THICKNESS = SETTINGS.RainbowBannerThickness
-	local RAINBOW_RADIUS = 20
+	local RAINBOW_RADIUS = 18 -- matches panel UICorner radius
 
 	for i = 1, RAINBOW_SEGMENT_COUNT do
 		local segment = Instance.new("Frame")
