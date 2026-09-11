@@ -83,7 +83,7 @@ end
 purgeAllDayBreakNametags()
 
 --==================================================
--- V5 STABILITY PATCH: restore OWNER rainbow + center logo rotation
+-- V19 BOT-ONLY DESIGN: no automatic OWNER border/name styling
 --==================================================
 -- SETTINGS
 --==================================================
@@ -96,9 +96,7 @@ local SETTINGS = {
 
 	-- Roles
 	-- Change usernames here
-	Roles = {
-		["DayyBreak66"] = "OWNER",
-	},
+	Roles = {},
 
 	-- Global default tag. Every shown player starts with these values,
 	-- then their remote/player-specific values override them.
@@ -108,57 +106,10 @@ local SETTINGS = {
 		BackgroundTransparency = 0.05,
 	},
 
-	-- Player-specific tags
-	-- Banners are hosted in the GitHub /banners folder.
-	-- Use Roblox UserIds when possible so tags stay tied to the correct person.
-	-- Banner is ONLY the filename, for example: "DayyBreak66.png"
-	-- DisplayName is optional. If omitted, the player's normal Roblox DisplayName is used.
+	-- Player-specific tags are supplied exclusively by the Discord/GitHub config.
 	PlayerTags = {
-		-- Recommended: use UserId
-		-- [123456789] = {
-		--	Role = "FRIEND",
-		--	Banner = "Friend1.png",
-		--	BackgroundTransparency = 0.05,
-		-- },
-
-		["DayyBreak66"] = {
-			Role = "OWNER",
-			DisplayName = "DayBreak",
-			Banner = "Daybreak.png",
-
-			Logo = "Catlogo.png",
-			Border = "Gold",
-			NameColor = "Purple",
-			BackgroundTransparency = 0.05,
-		},
-		["xOmqhayleealt"] = {
-			Role = "Admin",
-			DisplayName = "Haylee",
-			Banner = "Haylee.png",
-			Border = "NeonPink",
-			BackgroundTransparency = 0.05,
-		},
-
-		["Chloeeafm"] = {
-			Role = "Admin",
-			DisplayName = "Owned By Nigger",
-			Banner = "Chloe123.png",
-			BackgroundTransparency = 0.05,
-		},
-		["Gummaes"] = {
-			Role = "Admin",
-			DisplayName = "Nigger",
-			Banner = "Gummies1.png",
-			Border = "WhiteGlow",
-			BackgroundTransparency = 0.05,
-		},
-
-		-- ["FriendUsername"] = {
-		--	Role = "FRIEND",
-		--	DisplayName = "Custom Name",
-		--	Banner = "Friend1.png",
-		--	BackgroundTransparency = 0.05,
-		-- },
+		-- Player-specific tags are now managed by the Discord bot / GitHub config.
+		-- Add entries here only if you intentionally want a local fallback.
 	},
 
 	-- Colors
@@ -209,16 +160,6 @@ local SETTINGS = {
 	-- Dedicated logo rotation system
 	LogoRotationEnabled = true,
 	LogoRotationSpeed = 20,
-
-	-- OWNER SPECIAL EFFECT
-	OwnerPulseEnabled = true,
-	OwnerPulseSpeed = 2.5,
-	OwnerPulseAmount = 0.035,
-	OwnerRingEnabled = true,
-
-	-- OWNER RAINBOW NAME
-	OwnerRainbowNameEnabled = true,
-	OwnerRainbowNameSpeed = 45,
 
 	-- CLICKABLE FRIEND TAGS
 	-- LOGO EFFECT SYSTEM
@@ -639,9 +580,7 @@ local function applyRemoteConfig(body)
 	end
 
 	if type(decoded.players) == "table" then
-		-- IMPORTANT: merge remote entries into the existing hardcoded tags
-		-- instead of replacing them. This preserves tags created before the
-		-- Discord/GitHub system existed.
+		-- Remote entries are the only source of player-specific custom tags.
 		local mergedPlayers = copyTable(SETTINGS.PlayerTags)
 		for playerKey, playerConfig in pairs(decoded.players) do
 			if type(playerConfig) == "table" then
@@ -701,19 +640,6 @@ local function getTagConfig(player)
 
 	for key, value in pairs(playerConfig) do
 		config[key] = value
-	end
-
-	-- Preserve the original V4 OWNER look when the remote player entry
-	-- does not explicitly choose Border/NameColor. The defaults table
-	-- may contain WhiteGlow, so checking `config.Border` alone is not
-	-- enough: we must check whether the PLAYER actually supplied it.
-	if tostring(config.Role or ""):upper() == "OWNER" then
-		if playerConfig.Border == nil or tostring(playerConfig.Border) == "" then
-			config.Border = "Rainbow"
-		end
-		if playerConfig.NameColor == nil or tostring(playerConfig.NameColor) == "" then
-			config.NameColor = "Rainbow"
-		end
 	end
 
 	return config
@@ -969,7 +895,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "NormalBorderV14")
+	billboard:SetAttribute("DayBreakNametagVersion", "BotOnlyDesignV19")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1381,48 +1307,6 @@ local function createNametag(player, character)
 		star.Parent = logoVisual
 	end
 
-	--==================================================
-	-- OWNER RING
-	--==================================================
-
-	local ownerRing = Instance.new("Frame")
-	ownerRing.Name = "OwnerRing"
-	ownerRing.BackgroundTransparency = 1
-	ownerRing.BorderSizePixel = 0
-	ownerRing.Size = UDim2.new(1, -2, 1, -2)
-	ownerRing.Position = UDim2.new(0, 1, 0, 1)
-	ownerRing.ZIndex = 4
-	ownerRing.Parent = logoRotationRoot
-
-	local ownerRingCorner = Instance.new("UICorner")
-	ownerRingCorner.CornerRadius = UDim.new(1, 0)
-	ownerRingCorner.Parent = ownerRing
-
-	local ownerRingStroke = Instance.new("UIStroke")
-	ownerRingStroke.Thickness = 2
-	ownerRingStroke.Color = SETTINGS.OrangeBright
-	ownerRingStroke.Transparency = 0.15
-	ownerRingStroke.Parent = ownerRing
-
-	local ownerBadge = Instance.new("TextLabel")
-	ownerBadge.Name = "OwnerBadge"
-	ownerBadge.BackgroundTransparency = 0
-	ownerBadge.BackgroundColor3 = SETTINGS.OrangeBright
-	ownerBadge.BorderSizePixel = 0
-	ownerBadge.Size = UDim2.new(0, 52, 0, 16)
-	ownerBadge.Position = UDim2.new(0.5, -26, 1, -3)
-	ownerBadge.ZIndex = 6
-	ownerBadge.Font = Enum.Font.GothamBold
-	ownerBadge.Text = "OWNER"
-	ownerBadge.TextColor3 = Color3.fromRGB(20, 12, 5)
-	ownerBadge.TextSize = 10
-	ownerBadge.Parent = starCircle
-
-	local ownerBadgeCorner = Instance.new("UICorner")
-	ownerBadgeCorner.CornerRadius = UDim.new(0, 8)
-	ownerBadgeCorner.Parent = ownerBadge
-
-
 
 	--==================================================
 	-- BANNER OVERLAYS REMOVED
@@ -1467,7 +1351,7 @@ local function createNametag(player, character)
 	-- UIGradient is applied directly to the TextLabel so the colors
 	-- follow the letters instead of affecting the banner border.
 	local ownerNameGradient = Instance.new("UIGradient")
-	ownerNameGradient.Name = "OwnerRainbowName"
+	ownerNameGradient.Name = "RainbowNameGradient"
 	ownerNameGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
 		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 120, 0)),
@@ -1482,8 +1366,7 @@ local function createNametag(player, character)
 	-- the Rotation property.
 	ownerNameGradient.Rotation = 0
 	ownerNameGradient.Offset = Vector2.new(0, 0)
-	ownerNameGradient.Enabled = (getRole(player) == "OWNER")
-			or tostring(tagConfig.NameColor or ""):lower() == "rainbow"
+	ownerNameGradient.Enabled = tostring(tagConfig.NameColor or ""):lower() == "rainbow"
 	ownerNameGradient.Parent = nameLabel
 
 	nameLabel.ZIndex = 6
@@ -1671,30 +1554,6 @@ local function createNametag(player, character)
 		logoGlow.Parent = distantLogoVisual
 		logoStar.Parent = distantLogoVisual
 	end
-
-	--==================================================
-	-- OWNER DISTANT RING
-	--==================================================
-
-	local ownerRingDistant = Instance.new("Frame")
-	ownerRingDistant.Name = "OwnerRingDistant"
-	ownerRingDistant.BackgroundTransparency = 1
-	ownerRingDistant.BorderSizePixel = 0
-	ownerRingDistant.Size = UDim2.new(1, -2, 1, -2)
-	ownerRingDistant.Position = UDim2.new(0, 1, 0, 1)
-	ownerRingDistant.ZIndex = 4
-	ownerRingDistant.Parent = distantLogoRotationRoot
-
-	local ownerRingDistantCorner = Instance.new("UICorner")
-	ownerRingDistantCorner.CornerRadius = UDim.new(1, 0)
-	ownerRingDistantCorner.Parent = ownerRingDistant
-
-	local ownerRingDistantStroke = Instance.new("UIStroke")
-	ownerRingDistantStroke.Thickness = 2
-	ownerRingDistantStroke.Color = SETTINGS.OrangeBright
-	ownerRingDistantStroke.Transparency = 0.15
-	ownerRingDistantStroke.Parent = ownerRingDistant
-
 
 
 	--==================================================
@@ -2105,14 +1964,13 @@ local function createNametag(player, character)
 		end
 
 		--==================================================
-		-- OWNER RAINBOW NAME
+		-- BOT-CONFIGURED RAINBOW NAME
 		--==================================================
 
 		if ownerNameGradient then
-			if tostring(tagConfig.NameColor or ""):lower() == "rainbow"
-				or (getRole(player) == "OWNER" and SETTINGS.OwnerRainbowNameEnabled) then
+			if tostring(tagConfig.NameColor or ""):lower() == "rainbow" then
 				ownerNameGradient.Enabled = true
-				ownerNameGradient.Offset = Vector2.new(math.sin(time * SETTINGS.OwnerRainbowNameSpeed * 0.01) * 0.35, 0)
+				ownerNameGradient.Offset = Vector2.new(math.sin(time * SETTINGS.RainbowBannerSpeed * 0.01) * 0.35, 0)
 			else
 				ownerNameGradient.Enabled = false
 				-- Keep the selected static color visible when Rainbow is disabled.
@@ -2144,26 +2002,6 @@ local function createNametag(player, character)
 			distantLogoRotationRoot.Rotation = logoRotationAngle
 		end
 
-		--==================================================
-		-- OWNER EFFECT
-		--==================================================
-
-		if SETTINGS.OwnerPulseEnabled and getRole(player) == "OWNER" then
-			local pulse = (math.sin(time * SETTINGS.OwnerPulseSpeed) + 1) * 0.5
-			local scale = 1 + (pulse * SETTINGS.OwnerPulseAmount)
-
-			ownerRing.Size = UDim2.new(
-				scale, -2,
-				scale, -2
-			)
-			ownerRing.Position = UDim2.new(
-				0.5, -(scale * starCircle.AbsoluteSize.X - 2) / 2,
-				0.5, -(scale * starCircle.AbsoluteSize.Y - 2) / 2
-			)
-
-			ownerRingStroke.Transparency = 0.05 + (pulse * 0.35)
-			ownerRingDistantStroke.Transparency = 0.05 + (pulse * 0.35)
-		end
 
 		--==================================================
 		-- FLOATING
