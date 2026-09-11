@@ -661,7 +661,17 @@ end
 
 local function getNametagName(player)
 	local config = getTagConfig(player)
-	return config.DisplayName or player.DisplayName
+	local customName = config.DisplayName
+
+	-- Treat an empty/whitespace custom name as "use the real display name".
+	if customName ~= nil then
+		customName = tostring(customName)
+		if customName:match("%S") then
+			return customName
+		end
+	end
+
+	return player.DisplayName
 end
 
 --==================================================
@@ -1012,7 +1022,7 @@ local function createNametag(player, character)
 			backgroundImage.ScaleType = Enum.ScaleType.Stretch
 			backgroundImage.ImageColor3 = Color3.new(1, 1, 1)
 			backgroundImage.Visible = true
-			backgroundImage.ZIndex = 1
+			backgroundImage.ZIndex = 0
 			backgroundImage.Parent = panel
 			if bannerAnimation then
 				bannerAnimationController = setupSpriteAnimation(backgroundImage, bannerAnimation)
@@ -1274,7 +1284,7 @@ local function createNametag(player, character)
 	-- new logo rotation system.  All logo artwork lives underneath it.
 	local logoRotationRoot = Instance.new("Frame")
 	logoRotationRoot.Name = "LogoRotationRoot"
-	logoRotationRoot.Size = UDim2.new(1, -8, 1, -8)
+	logoRotationRoot.Size = UDim2.new(1, -4, 1, -4)
 	logoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
 	logoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 	logoRotationRoot.BackgroundTransparency = 1
@@ -1290,15 +1300,17 @@ local function createNametag(player, character)
 		customLogo.Name = "customLogo"
 		customLogo.BackgroundTransparency = 1
 		customLogo.BorderSizePixel = 0
-		customLogo.Size = UDim2.fromScale(1, 1)
-		customLogo.Position = UDim2.fromScale(0, 0)
-		customLogo.AnchorPoint = Vector2.new(0, 0)
+		-- Keep uploaded logos comfortably inside the circular logo area.
+		-- The logo itself is centered; the parent rotation root handles all rotation.
+		customLogo.Size = UDim2.fromScale(0.76, 0.76)
+		customLogo.Position = UDim2.fromScale(0.5, 0.5)
+		customLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogo.Image = customLogoAsset
 		customLogo.ScaleType = Enum.ScaleType.Fit
 		customLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
 		customLogo.ZIndex = 3
 		customLogo.Visible = true
-		customLogo.ClipsDescendants = true
+		customLogo.ClipsDescendants = false
 		customLogo.Parent = logoVisual
 		if logoAnimation then
 			logoAnimationController = setupSpriteAnimation(customLogo, logoAnimation)
@@ -1378,7 +1390,7 @@ local function createNametag(player, character)
 	ownerNameGradient.Enabled = tostring(tagConfig.NameColor or ""):lower() == "rainbow"
 	ownerNameGradient.Parent = nameLabel
 
-	nameLabel.ZIndex = 6
+	nameLabel.ZIndex = 10
 	nameLabel.Parent = panel
 
 	--==================================================
@@ -1402,7 +1414,7 @@ local function createNametag(player, character)
 	subtitle.TextStrokeColor3 = SETTINGS.Dark
 	subtitle.TextStrokeTransparency = 0.4
 
-	subtitle.ZIndex = 6
+	subtitle.ZIndex = 10
 	subtitle.Parent = panel
 
 	--==================================================
@@ -1522,7 +1534,7 @@ local function createNametag(player, character)
 
 	local distantLogoRotationRoot = Instance.new("Frame")
 	distantLogoRotationRoot.Name = "LogoRotationRoot"
-	distantLogoRotationRoot.Size = UDim2.new(1, -8, 1, -8)
+	distantLogoRotationRoot.Size = UDim2.new(1, -4, 1, -4)
 	distantLogoRotationRoot.Position = UDim2.fromScale(0.5, 0.5)
 	distantLogoRotationRoot.AnchorPoint = Vector2.new(0.5, 0.5)
 	distantLogoRotationRoot.BackgroundTransparency = 1
@@ -1538,15 +1550,15 @@ local function createNametag(player, character)
 		customLogoDistant.Name = "customLogoDistant"
 		customLogoDistant.BackgroundTransparency = 1
 		customLogoDistant.BorderSizePixel = 0
-		customLogoDistant.Size = UDim2.fromScale(1, 1)
-		customLogoDistant.Position = UDim2.fromScale(0, 0)
-		customLogoDistant.AnchorPoint = Vector2.new(0, 0)
+		customLogoDistant.Size = UDim2.fromScale(0.76, 0.76)
+		customLogoDistant.Position = UDim2.fromScale(0.5, 0.5)
+		customLogoDistant.AnchorPoint = Vector2.new(0.5, 0.5)
 		customLogoDistant.Image = customLogoAsset
 		customLogoDistant.ScaleType = Enum.ScaleType.Fit
 		customLogoDistant.ImageColor3 = Color3.fromRGB(255, 255, 255)
 		customLogoDistant.ZIndex = 3
 		customLogoDistant.Visible = true
-		customLogoDistant.ClipsDescendants = true
+		customLogoDistant.ClipsDescendants = false
 		customLogoDistant.Parent = distantLogoVisual
 		if logoAnimation then
 			setupSpriteAnimation(customLogoDistant, logoAnimation)
