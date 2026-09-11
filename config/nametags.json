@@ -1,41 +1,11 @@
 {
-  "version": 1,
+  "version": 2,
   "defaults": {
     "Banner": "DefaultBW.png",
     "Border": "WhiteGlow",
+    "NameColor": "White",
     "BackgroundTransparency": 0.05,
     "Role": "MEMBER"
   },
-  "roles": {
-    "DayyBreak66": "OWNER"
-  },
-  "players": {
-    "DayyBreak66": {
-      "Role": "OWNER",
-      "DisplayName": "DayDay",
-      "Banner": "DayyBreak66_banner_20260911101726.png",
-      "Logo": "Catlogo.png",
-      "BackgroundTransparency": 0.05
-    },
-    "xOmqhayleealt": {
-      "Role": "Admin",
-      "DisplayName": "Haylee",
-      "Banner": "Haylee.png",
-      "Border": "NeonPink",
-      "BackgroundTransparency": 0.05
-    },
-    "Chloeeafm": {
-      "Role": "Admin",
-      "DisplayName": "Owned By Nigger",
-      "Banner": "Chloe123.png",
-      "BackgroundTransparency": 0.05
-    },
-    "Gummaes": {
-      "Role": "Admin",
-      "DisplayName": "Nigger",
-      "Banner": "Gummies1.png",
-      "Border": "WhiteGlow",
-      "BackgroundTransparency": 0.05
-    }
-  }
+  "players": {}
 }
