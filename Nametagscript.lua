@@ -1073,133 +1073,54 @@ local function createNametag(player, character)
 	end
 
 	--==================================================
-	-- RAINBOW BORDER — CLEAN REBUILD
+	-- RAINBOW BORDER — EXACT WHITEGLOW GEOMETRY
 	--==================================================
-	-- The Rainbow border uses the OUTER tag rectangle as its reference.
-	-- This is the same visible footprint used by the normal white/chrome
-	-- perimeter, so Rainbow does not have a second, smaller coordinate box.
-	-- No UIScale, inset rectangle, or separate parent is used for the border.
+	-- IMPORTANT: Rainbow is built on the SAME `panel` Frame that owns
+	-- WhiteGlow. This guarantees identical bounds, center, corner radius,
+	-- and UIScale behavior. There is no second border rectangle.
 
-	local rainbowContainer = Instance.new("Frame")
-	rainbowContainer.Name = "RainbowBorder"
-	rainbowContainer.Size = UDim2.fromScale(1, 1)
-	rainbowContainer.Position = UDim2.fromScale(0.5, 0.5)
-	rainbowContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-	rainbowContainer.BackgroundTransparency = 1
-	rainbowContainer.BorderSizePixel = 0
-	rainbowContainer.ClipsDescendants = false
-	rainbowContainer.ZIndex = 50
-	rainbowContainer.Visible = (borderStyle == "Rainbow")
-	rainbowContainer.Parent = outer
+	local rainbowBorder = Instance.new("UIStroke")
+	rainbowBorder.Name = "RainbowBorder"
+	rainbowBorder.Thickness = 3
+	rainbowBorder.Transparency = 0.02
+	rainbowBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowBorder.Parent = panel
 
-	local rainbowSegments = {}
-	local RAINBOW_SEGMENT_COUNT = 61
-	local RAINBOW_THICKNESS = 3
-	local RAINBOW_GLOW_THICKNESS = 6
-	local RAINBOW_RADIUS = 22
+	local rainbowGradient = Instance.new("UIGradient")
+	rainbowGradient.Name = "RainbowGradient"
+	rainbowGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(255, 127, 0)),
+		ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 0)),
+		ColorSequenceKeypoint.new(0.66, Color3.fromRGB(0, 127, 255)),
+		ColorSequenceKeypoint.new(0.83, Color3.fromRGB(127, 0, 255)),
+		ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
+	})
+	rainbowGradient.Rotation = 0
+	rainbowGradient.Offset = Vector2.new(0, 0)
+	rainbowGradient.Parent = rainbowBorder
 
-	for i = 1, RAINBOW_SEGMENT_COUNT do
-		local segment = Instance.new("Frame")
-		segment.Name = "RainbowSegment" .. i
-		segment.BackgroundColor3 = Color3.fromHSV((i - 1) / RAINBOW_SEGMENT_COUNT, 1, 1)
-		segment.BorderSizePixel = 0
-		segment.AnchorPoint = Vector2.new(0.5, 0.5)
-		segment.ZIndex = 51
-		segment.Parent = rainbowContainer
+	local rainbowGlow = Instance.new("UIStroke")
+	rainbowGlow.Name = "RainbowGlow"
+	rainbowGlow.Thickness = 8
+	rainbowGlow.Transparency = 0.72
+	rainbowGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rainbowGlow.Parent = panel
 
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(1, 0)
-		corner.Parent = segment
+	local rainbowGlowGradient = Instance.new("UIGradient")
+	rainbowGlowGradient.Name = "RainbowGlowGradient"
+	rainbowGlowGradient.Color = rainbowGradient.Color
+	rainbowGlowGradient.Rotation = 0
+	rainbowGlowGradient.Offset = Vector2.new(0, 0)
+	rainbowGlowGradient.Parent = rainbowGlow
 
-		local glow = Instance.new("UIStroke")
-		glow.Name = "RainbowGlow"
-		glow.Thickness = RAINBOW_GLOW_THICKNESS
-		glow.Transparency = 0.72
-		glow.Color = segment.BackgroundColor3
-		glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		glow.Parent = segment
-
-		table.insert(rainbowSegments, {frame = segment, glow = glow})
+	local function setRainbowBorderVisible(visible)
+		rainbowBorder.Enabled = visible
+		rainbowGlow.Enabled = visible
 	end
 
-	local rainbowLastWidth = 0
-	local rainbowLastHeight = 0
-
-	local function buildRainbowBorder()
-		local size = rainbowContainer.AbsoluteSize
-		local w, h = size.X, size.Y
-		if w <= 1 or h <= 1 then
-			return
-		end
-
-		if math.abs(w - rainbowLastWidth) < 0.5 and math.abs(h - rainbowLastHeight) < 0.5 then
-			return
-		end
-		rainbowLastWidth = w
-		rainbowLastHeight = h
-
-		local radius = math.min(RAINBOW_RADIUS, (h * 0.5) - 1, (w * 0.5) - 1)
-		local points = {}
-
-		local function addPoint(x, y)
-			table.insert(points, Vector2.new(x, y))
-		end
-
-		-- The path follows the exact edge of the outer tag.
-		for i = 0, 7 do
-			local t = i / 7
-			addPoint(radius + (w - 2 * radius) * t, 0)
-		end
-
-		for i = 1, 8 do
-			local a = -math.pi / 2 + (math.pi / 2) * (i / 8)
-			addPoint(w - radius + math.cos(a) * radius, radius + math.sin(a) * radius)
-		end
-
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(w, radius + (h - 2 * radius) * t)
-		end
-
-		for i = 1, 8 do
-			local a = (math.pi / 2) * (i / 8)
-			addPoint(w - radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
-		end
-
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(w - radius - (w - 2 * radius) * t, h)
-		end
-
-		for i = 1, 8 do
-			local a = math.pi / 2 + (math.pi / 2) * (i / 8)
-			addPoint(radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
-		end
-
-		for i = 1, 7 do
-			local t = i / 7
-			addPoint(0, h - radius - (h - 2 * radius) * t)
-		end
-
-		for i = 1, 8 do
-			local a = math.pi + (math.pi / 2) * (i / 8)
-			addPoint(radius + math.cos(a) * radius, radius + math.sin(a) * radius)
-		end
-
-		for i, data in ipairs(rainbowSegments) do
-			local p1 = points[i]
-			local p2 = points[(i % #points) + 1]
-			if p1 and p2 then
-				local delta = p2 - p1
-				local midpoint = (p1 + p2) * 0.5
-				data.frame.Position = UDim2.fromOffset(midpoint.X, midpoint.Y)
-				data.frame.Size = UDim2.fromOffset(delta.Magnitude + 2, RAINBOW_THICKNESS)
-				data.frame.Rotation = math.deg(math.atan2(delta.Y, delta.X))
-			end
-		end
-	end
-
-	buildRainbowBorder()
+	setRainbowBorderVisible(borderStyle == "Rainbow" and SETTINGS.RainbowBannerEnabled)
 
 	--==================================================
 	-- STAR CIRCLE
@@ -1968,19 +1889,13 @@ local function createNametag(player, character)
 		-- Each segment gets a smoothly moving HSV hue.
 		--==================================================
 
-		buildRainbowBorder()
-
 		if SETTINGS.RainbowBannerEnabled and borderStyle == "Rainbow" then
-			rainbowContainer.Visible = true
-			local hueOffset = (time * SETTINGS.RainbowBannerSpeed / 360) % 1
-			for i, data in ipairs(rainbowSegments) do
-				local hue = ((i - 1) / RAINBOW_SEGMENT_COUNT + hueOffset) % 1
-				local color = Color3.fromHSV(hue, 1, 1)
-				data.frame.BackgroundColor3 = color
-				data.glow.Color = color
-			end
+			setRainbowBorderVisible(true)
+			local offset = (time * SETTINGS.RainbowBannerSpeed * 0.0025) % 1
+			rainbowGradient.Offset = Vector2.new(offset, 0)
+			rainbowGlowGradient.Offset = Vector2.new(offset, 0)
 		else
-			rainbowContainer.Visible = false
+			setRainbowBorderVisible(false)
 		end
 
 		--==================================================
