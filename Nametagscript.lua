@@ -1073,31 +1073,20 @@ local function createNametag(player, character)
 	end
 
 	--==================================================
-	-- PROCEDURAL RAINBOW BORDER AROUND THE OUTSIDE
-	-- Uses small rounded segments instead of UIGradient-on-UIStroke.
-	-- This is intentionally more compatible with clients/executors that
-	-- do not render gradient strokes correctly.
+	-- RAINBOW BORDER — CLEAN REBUILD
 	--==================================================
+	-- The Rainbow border uses the OUTER tag rectangle as its reference.
+	-- This is the same visible footprint used by the normal white/chrome
+	-- perimeter, so Rainbow does not have a second, smaller coordinate box.
+	-- No UIScale, inset rectangle, or separate parent is used for the border.
 
 	local rainbowContainer = Instance.new("Frame")
-	rainbowContainer.Name = "RainbowBannerBorder"
-	rainbowContainer.BackgroundTransparency = 1
-	rainbowContainer.BorderSizePixel = 0
-	-- Match the procedural rainbow border to the EXACT same rectangle used
-	-- by the WhiteGlow UIStroke: the inner panel bounds.
-	--
-	-- Geometry:
-	-- outer       = full tag
-	-- orangeFrame = outer inset 3px
-	-- panel       = orangeFrame inset 3px
-	-- therefore panel is exactly 6px inset from outer on every side.
-	--
-	-- Keeping the rainbow container in outer but giving it the panel's exact
-	-- bounds makes Rainbow and WhiteGlow occupy the same visual footprint
-	-- while still allowing the rainbow segments to render outside the panel.
-	rainbowContainer.Size = UDim2.new(1, -12, 1, -12)
+	rainbowContainer.Name = "RainbowBorder"
+	rainbowContainer.Size = UDim2.fromScale(1, 1)
 	rainbowContainer.Position = UDim2.fromScale(0.5, 0.5)
 	rainbowContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	rainbowContainer.BackgroundTransparency = 1
+	rainbowContainer.BorderSizePixel = 0
 	rainbowContainer.ClipsDescendants = false
 	rainbowContainer.ZIndex = 50
 	rainbowContainer.Visible = (borderStyle == "Rainbow")
@@ -1105,8 +1094,9 @@ local function createNametag(player, character)
 
 	local rainbowSegments = {}
 	local RAINBOW_SEGMENT_COUNT = 61
-	local RAINBOW_THICKNESS = SETTINGS.RainbowBannerThickness
-	local RAINBOW_RADIUS = 18 -- matches panel UICorner radius
+	local RAINBOW_THICKNESS = 3
+	local RAINBOW_GLOW_THICKNESS = 6
+	local RAINBOW_RADIUS = 22
 
 	for i = 1, RAINBOW_SEGMENT_COUNT do
 		local segment = Instance.new("Frame")
@@ -1114,7 +1104,7 @@ local function createNametag(player, character)
 		segment.BackgroundColor3 = Color3.fromHSV((i - 1) / RAINBOW_SEGMENT_COUNT, 1, 1)
 		segment.BorderSizePixel = 0
 		segment.AnchorPoint = Vector2.new(0.5, 0.5)
-		segment.ZIndex = 50
+		segment.ZIndex = 51
 		segment.Parent = rainbowContainer
 
 		local corner = Instance.new("UICorner")
@@ -1122,11 +1112,11 @@ local function createNametag(player, character)
 		corner.Parent = segment
 
 		local glow = Instance.new("UIStroke")
-		glow.Name = "SoftGlow"
-		glow.Thickness = 2
-		glow.Transparency = 0.70
+		glow.Name = "RainbowGlow"
+		glow.Thickness = RAINBOW_GLOW_THICKNESS
+		glow.Transparency = 0.72
 		glow.Color = segment.BackgroundColor3
-		glow.ZIndex = 49
+		glow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		glow.Parent = segment
 
 		table.insert(rainbowSegments, {frame = segment, glow = glow})
@@ -1155,42 +1145,42 @@ local function createNametag(player, character)
 			table.insert(points, Vector2.new(x, y))
 		end
 
-		-- Top edge
+		-- The path follows the exact edge of the outer tag.
 		for i = 0, 7 do
 			local t = i / 7
 			addPoint(radius + (w - 2 * radius) * t, 0)
 		end
-		-- Top-right corner
+
 		for i = 1, 8 do
 			local a = -math.pi / 2 + (math.pi / 2) * (i / 8)
 			addPoint(w - radius + math.cos(a) * radius, radius + math.sin(a) * radius)
 		end
-		-- Right edge
+
 		for i = 1, 7 do
 			local t = i / 7
 			addPoint(w, radius + (h - 2 * radius) * t)
 		end
-		-- Bottom-right corner
+
 		for i = 1, 8 do
-			local a = 0 + (math.pi / 2) * (i / 8)
+			local a = (math.pi / 2) * (i / 8)
 			addPoint(w - radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
 		end
-		-- Bottom edge
+
 		for i = 1, 7 do
 			local t = i / 7
 			addPoint(w - radius - (w - 2 * radius) * t, h)
 		end
-		-- Bottom-left corner
+
 		for i = 1, 8 do
 			local a = math.pi / 2 + (math.pi / 2) * (i / 8)
 			addPoint(radius + math.cos(a) * radius, h - radius + math.sin(a) * radius)
 		end
-		-- Left edge
+
 		for i = 1, 7 do
 			local t = i / 7
 			addPoint(0, h - radius - (h - 2 * radius) * t)
 		end
-		-- Top-left corner
+
 		for i = 1, 8 do
 			local a = math.pi + (math.pi / 2) * (i / 8)
 			addPoint(radius + math.cos(a) * radius, radius + math.sin(a) * radius)
@@ -1201,10 +1191,9 @@ local function createNametag(player, character)
 			local p2 = points[(i % #points) + 1]
 			if p1 and p2 then
 				local delta = p2 - p1
-				local length = delta.Magnitude + 2
 				local midpoint = (p1 + p2) * 0.5
 				data.frame.Position = UDim2.fromOffset(midpoint.X, midpoint.Y)
-				data.frame.Size = UDim2.fromOffset(length, RAINBOW_THICKNESS)
+				data.frame.Size = UDim2.fromOffset(delta.Magnitude + 2, RAINBOW_THICKNESS)
 				data.frame.Rotation = math.deg(math.atan2(delta.Y, delta.X))
 			end
 		end
