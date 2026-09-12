@@ -40,7 +40,8 @@
     },
     "NoixCtl": {
       "Border": "Green",
-      "Banner": "NoixCtl_banner_20260912011403.png"
+      "Banner": "NoixCtl_banner_20260912011403.png",
+      "DisplayName": "Noix"
     }
   }
 }
