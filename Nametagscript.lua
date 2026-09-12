@@ -893,24 +893,51 @@ local function setupSpriteAnimation(imageObject, animationConfig)
 		return nil
 	end
 
-	-- Roblox sprite sheets use ImageRectOffset/ImageRectSize with Crop.
-	-- The previous client left animated images on Fit, which can cause the
-	-- ImageRect viewport to behave like a single static image.
-	imageObject.ScaleType = Enum.ScaleType.Crop
+	-- Roblox's documented sprite-sheet pattern uses ImageRectSize +
+	-- ImageRectOffset. Keep the ImageLabel on Stretch so the rect itself,
+	-- rather than ScaleType cropping, controls which frame is shown.
+	imageObject.ScaleType = Enum.ScaleType.Stretch
 	imageObject.ImageRectSize = Vector2.new(frameWidth, frameHeight)
 	imageObject.ImageRectOffset = Vector2.new(0, 0)
 
-	return {
+	local controller = {
 		image = imageObject,
 		frameWidth = frameWidth,
 		frameHeight = frameHeight,
 		columns = columns,
 		frameCount = frameCount,
 		fps = fps,
-		frame = 0,	
+		frame = 0,
 		clock = 0,
 	}
+
+	-- Run uploaded sprite animations independently from the main nametag
+	-- RenderStepped callback. This prevents another visual effect from
+	-- interfering with GIF/banner playback.
+	task.spawn(function()
+		while controller.image and controller.image.Parent do
+			local frameDuration = 1 / controller.fps
+			task.wait(frameDuration)
+
+			if not controller.image or not controller.image.Parent then
+				break
+			end
+
+			controller.frame = (controller.frame + 1) % controller.frameCount
+
+			local column = controller.frame % controller.columns
+			local row = math.floor(controller.frame / controller.columns)
+
+			controller.image.ImageRectOffset = Vector2.new(
+				column * controller.frameWidth,
+				row * controller.frameHeight
+			)
+		end
+	end)
+
+	return controller
 end
+
 
 local function advanceSpriteAnimation(animation, dt)
 	if not animation or not animation.image or not animation.image.Parent then
@@ -1955,9 +1982,7 @@ local function createNametag(player, character)
 		--==================================================
 		-- UPLOADED GIF ANIMATION
 		--==================================================
-		advanceSpriteAnimation(bannerAnimationController, dt)
-		advanceSpriteAnimation(logoAnimationController, dt)
-		advanceSpriteAnimation(logoAnimationDistantController, dt)
+		-- Uploaded GIF sprite sheets are advanced by their own controllers.
 
 		--==================================================
 		-- GLOW
