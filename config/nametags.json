@@ -13,8 +13,17 @@
       "DisplayName": "DayDay",
       "Banner": "DayyBreak66_banner_20260911120709.png",
       "Border": "Rainbow",
-      "Logo": "DayyBreak66_logo_20260912004100.png",
-      "Role": "Owner"
+      "Logo": "DayyBreak66_logo_20260912010410_anim.png",
+      "Role": "Owner",
+      "LogoAnimation": {
+        "SpriteSheet": "DayyBreak66_logo_20260912010410_anim.png",
+        "FrameWidth": 116,
+        "FrameHeight": 116,
+        "Columns": 8,
+        "Rows": 3,
+        "FrameCount": 24,
+        "FPS": 25
+      }
     },
     "rightright_r": {
       "Banner": "rightright_r_banner_20260911134228.png",
