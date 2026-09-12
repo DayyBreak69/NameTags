@@ -54,7 +54,8 @@
         "Rows": 3,
         "FrameCount": 18,
         "FPS": 15
-      }
+      },
+      "Border": "WhiteGlow"
     },
     "Noix": {
       "Logo": "Noix_logo_20260912012000.png"
