@@ -41,7 +41,8 @@
     "NoixCtl": {
       "Border": "Green",
       "Banner": "NoixCtl_banner_20260912011403.png",
-      "DisplayName": "Noix"
+      "DisplayName": "Noix",
+      "Logo": "NoixCtl_logo_20260912012113.png"
     },
     "Skidurm": {
       "Role": "Shabriri",
