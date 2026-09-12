@@ -2293,11 +2293,27 @@ local function isActivePlayer(player)
 	return player == localPlayer or ActivePlayers[player.UserId] == true
 end
 
--- Only players who have executed the script get a nametag.
--- GitHub PlayerTags controls the appearance; it does NOT control visibility.
--- Therefore active players without a custom entry use the normal default tag.
+-- Visibility rules:
+-- 1. Players who have executed the script get their normal/default tag.
+-- 2. A player with a GitHub custom tag is also visible, even if the shared
+--    registry is temporarily slow or missed that player's heartbeat.
+-- 3. Players who have neither executed nor have a custom GitHub entry stay hidden.
+-- This makes custom tags reliable across clients without making every player visible.
+local function hasCustomTagConfig(player)
+	if not player then
+		return false
+	end
+
+	local userIdKey = tostring(player.UserId)
+	local usernameKey = tostring(player.Name)
+
+	return type(SETTINGS.PlayerTags[userIdKey]) == "table"
+		or type(SETTINGS.PlayerTags[player.UserId]) == "table"
+		or type(SETTINGS.PlayerTags[usernameKey]) == "table"
+end
+
 local function shouldShowNametag(player)
-	return isActivePlayer(player)
+	return isActivePlayer(player) or hasCustomTagConfig(player)
 end
 
 local function hasNametagForCharacter(character)
@@ -2406,6 +2422,9 @@ task.spawn(function()
 
 	while __DAYBREAK_GENERATION == _G.__DayBreakNametagGeneration do
 		heartbeat()
+		-- Give the registry a moment to persist this heartbeat before reading
+		-- the shared player list. This reduces one-cycle visibility delays.
+		task.wait(0.15)
 		refreshActivePlayers()
 		syncNametags()
 		task.wait(REGISTRY_POLL_SECONDS)
