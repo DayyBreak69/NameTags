@@ -869,12 +869,72 @@ local function removeNametag(character)
 end
 
 --==================================================
--- STAFF-UPLOADED ANIMATION SPRITE SHEETS
--- Discord converts uploaded GIFs into compact PNG sprite sheets.
--- Roblox ImageLabels cannot play GIFs directly, so the client cycles
--- ImageRectOffset through the stored frames. This keeps GIF animation
--- real in-game without requiring dozens of individual image assets.
+-- STAFF-UPLOADED ANIMATION FRAMES
+-- Discord stores animated banners as individual PNG frames.
+-- Roblox swaps the ImageLabel.Image one frame at a time. This avoids
+-- ImageRectOffset/ImageRectSize sprite-sheet scaling/cropping issues.
 --==================================================
+local function setupIndividualFrameAnimation(imageObject, animationConfig)
+	if not imageObject or type(animationConfig) ~= "table" then
+		return nil
+	end
+
+	local frames = animationConfig.Frames
+	local frameCount = type(frames) == "table" and #frames or 0
+	local fps = tonumber(animationConfig.FPS)
+
+	if frameCount <= 0 or not fps or fps <= 0 then
+		return nil
+	end
+
+	local controller = {
+		image = imageObject,
+		frames = frames,
+		frameCount = frameCount,
+		fps = fps,
+		frame = 1,
+		assets = {},
+	}
+
+	-- Load every frame once. Each frame is a normal 560x150 PNG, so Roblox
+	-- never has to interpret a large grid/sprite sheet.
+	for i, filename in ipairs(frames) do
+		if controller.image and controller.image.Parent then
+			local asset = downloadBanner(filename)
+			if asset then
+				controller.assets[i] = asset
+			end
+		end
+	end
+
+	if not controller.assets[1] then
+		return nil
+	end
+
+	imageObject.Image = controller.assets[1]
+	imageObject.ScaleType = Enum.ScaleType.Stretch
+
+	task.spawn(function()
+		while controller.image and controller.image.Parent do
+			task.wait(1 / controller.fps)
+
+			if not controller.image or not controller.image.Parent then
+				break
+			end
+
+			controller.frame = (controller.frame % controller.frameCount) + 1
+			local nextAsset = controller.assets[controller.frame]
+			if nextAsset then
+				controller.image.Image = nextAsset
+			end
+		end
+	end)
+
+	return controller
+end
+
+-- Backwards-compatible sprite-sheet animation for old configs (including
+-- existing logo animations). New animated banners use Frames instead.
 local function setupSpriteAnimation(imageObject, animationConfig)
 	if not imageObject or type(animationConfig) ~= "table" then
 		return nil
@@ -893,9 +953,6 @@ local function setupSpriteAnimation(imageObject, animationConfig)
 		return nil
 	end
 
-	-- Roblox's documented sprite-sheet pattern uses ImageRectSize +
-	-- ImageRectOffset. Keep the ImageLabel on Stretch so the rect itself,
-	-- rather than ScaleType cropping, controls which frame is shown.
 	imageObject.ScaleType = Enum.ScaleType.Stretch
 	imageObject.ImageRectSize = Vector2.new(frameWidth, frameHeight)
 	imageObject.ImageRectOffset = Vector2.new(0, 0)
@@ -908,26 +965,17 @@ local function setupSpriteAnimation(imageObject, animationConfig)
 		frameCount = frameCount,
 		fps = fps,
 		frame = 0,
-		clock = 0,
 	}
 
-	-- Run uploaded sprite animations independently from the main nametag
-	-- RenderStepped callback. This prevents another visual effect from
-	-- interfering with GIF/banner playback.
 	task.spawn(function()
 		while controller.image and controller.image.Parent do
-			local frameDuration = 1 / controller.fps
-			task.wait(frameDuration)
-
+			task.wait(1 / controller.fps)
 			if not controller.image or not controller.image.Parent then
 				break
 			end
-
 			controller.frame = (controller.frame + 1) % controller.frameCount
-
 			local column = controller.frame % controller.columns
 			local row = math.floor(controller.frame / controller.columns)
-
 			controller.image.ImageRectOffset = Vector2.new(
 				column * controller.frameWidth,
 				row * controller.frameHeight
@@ -938,30 +986,10 @@ local function setupSpriteAnimation(imageObject, animationConfig)
 	return controller
 end
 
-
 local function advanceSpriteAnimation(animation, dt)
-	if not animation or not animation.image or not animation.image.Parent then
-		return
-	end
-
-	animation.clock += dt
-	local frameDuration = 1 / animation.fps
-	if animation.clock < frameDuration then
-		return
-	end
-
-	-- Consume elapsed frame time rather than resetting to zero. This keeps
-	-- playback smooth when a frame takes longer to render.
-	local steps = math.floor(animation.clock / frameDuration)
-	animation.clock -= steps * frameDuration
-	animation.frame = (animation.frame + steps) % animation.frameCount
-
-	local column = animation.frame % animation.columns
-	local row = math.floor(animation.frame / animation.columns)
-	animation.image.ImageRectOffset = Vector2.new(
-		column * animation.frameWidth,
-		row * animation.frameHeight
-	)
+	-- Kept for compatibility with any existing references. New animations
+	-- run independently and do not use this function.
+	return
 end
 
 --==================================================
@@ -1120,7 +1148,11 @@ local function createNametag(player, character)
 			backgroundImage.ZIndex = 1
 			backgroundImage.Parent = panel
 			if bannerAnimation then
-				bannerAnimationController = setupSpriteAnimation(backgroundImage, bannerAnimation)
+				if type(bannerAnimation.Frames) == "table" then
+					bannerAnimationController = setupIndividualFrameAnimation(backgroundImage, bannerAnimation)
+				else
+					bannerAnimationController = setupSpriteAnimation(backgroundImage, bannerAnimation)
+				end
 			end
 
 			local backgroundCorner = Instance.new("UICorner")
