@@ -55,7 +55,8 @@
         "FrameCount": 18,
         "FPS": 15
       },
-      "Border": "WhiteGlow"
+      "Border": "WhiteGlow",
+      "Logo": "Skidurm_logo_20260912012101.png"
     },
     "Noix": {
       "Logo": "Noix_logo_20260912012000.png"
