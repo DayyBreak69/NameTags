@@ -44,7 +44,17 @@
       "DisplayName": "Noix"
     },
     "Skidurm": {
-      "Role": "Shabriri"
+      "Role": "Shabriri",
+      "Banner": "Skidurm_banner_20260912012009_anim.png",
+      "BannerAnimation": {
+        "SpriteSheet": "Skidurm_banner_20260912012009_anim.png",
+        "FrameWidth": 560,
+        "FrameHeight": 150,
+        "Columns": 8,
+        "Rows": 3,
+        "FrameCount": 18,
+        "FPS": 15
+      }
     },
     "Noix": {
       "Logo": "Noix_logo_20260912012000.png"
