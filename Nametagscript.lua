@@ -893,6 +893,10 @@ local function setupSpriteAnimation(imageObject, animationConfig)
 		return nil
 	end
 
+	-- Roblox sprite sheets use ImageRectOffset/ImageRectSize with Crop.
+	-- The previous client left animated images on Fit, which can cause the
+	-- ImageRect viewport to behave like a single static image.
+	imageObject.ScaleType = Enum.ScaleType.Crop
 	imageObject.ImageRectSize = Vector2.new(frameWidth, frameHeight)
 	imageObject.ImageRectOffset = Vector2.new(0, 0)
 
@@ -980,7 +984,7 @@ local function createNametag(player, character)
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "CustomDayBreakNametag"
-	billboard:SetAttribute("DayBreakNametagVersion", "FullAuditV27")
+	billboard:SetAttribute("DayBreakNametagVersion", "GifLogoFixV30")
 	billboard.Adornee = head
 	billboard.Size = UDim2.fromOffset(
 		SETTINGS.Width,
@@ -1538,6 +1542,7 @@ local function createNametag(player, character)
 	logoStar.Parent = logoCircle
 
 	local customLogoDistant = nil
+	local logoAnimationDistantController = nil
 	local distantLogoVisual = Instance.new("Frame")
 	distantLogoVisual.Name = "LogoVisual"
 	distantLogoVisual.Size = UDim2.new(1, -8, 1, -8)
@@ -1582,7 +1587,7 @@ local function createNametag(player, character)
 		customLogoDistant.ClipsDescendants = true
 		customLogoDistant.Parent = distantLogoVisual
 		if logoAnimation then
-			setupSpriteAnimation(customLogoDistant, logoAnimation)
+			logoAnimationDistantController = setupSpriteAnimation(customLogoDistant, logoAnimation)
 		end
 
 		local customLogoDistantCorner = Instance.new("UICorner")
@@ -1952,6 +1957,7 @@ local function createNametag(player, character)
 		--==================================================
 		advanceSpriteAnimation(bannerAnimationController, dt)
 		advanceSpriteAnimation(logoAnimationController, dt)
+		advanceSpriteAnimation(logoAnimationDistantController, dt)
 
 		--==================================================
 		-- GLOW
