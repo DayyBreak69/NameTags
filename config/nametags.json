@@ -48,12 +48,12 @@
     },
     "Skidurm": {
       "Role": "Shabriri",
-      "Banner": "Skidurm_banner_20260912014435_anim.png",
+      "Banner": "Skidurm_banner_20260912015419_anim.png",
       "BannerAnimation": {
-        "SpriteSheet": "Skidurm_banner_20260912014435_anim.png",
+        "SpriteSheet": "Skidurm_banner_20260912015419_anim.png",
         "FrameWidth": 560,
         "FrameHeight": 150,
-        "Columns": 8,
+        "Columns": 7,
         "Rows": 3,
         "FrameCount": 18,
         "FPS": 15
