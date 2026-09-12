@@ -645,7 +645,7 @@ local function applyRemoteConfig(body)
 		for key, value in pairs(decoded.defaults) do
 			if key == "Banner" or key == "Logo" or key == "Border"
 				or key == "BackgroundTransparency" or key == "DisplayName"
-				or key == "Role" or key == "NameColor" then
+				or key == "Role" or key == "NameColor" or key == "LogoRotationEnabled" then
 				newDefaults[key] = value
 			end
 		end
@@ -2055,7 +2055,7 @@ local function createNametag(player, character)
 		--==================================================
 		-- Only the two rotation roots are rotated. The artwork and all other
 		-- logo effects never receive a Rotation assignment.
-		if SETTINGS.LogoRotationEnabled then
+		if SETTINGS.LogoRotationEnabled == true then
 			--==================================================
 			-- TRUE CONTINUOUS ROTATION
 			--==================================================
