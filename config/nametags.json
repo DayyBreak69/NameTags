@@ -23,7 +23,8 @@
         "Rows": 3,
         "FrameCount": 24,
         "FPS": 25
-      }
+      },
+      "LogoRotationEnabled": true
     },
     "rightright_r": {
       "Banner": "rightright_r_banner_20260911134228.png",
