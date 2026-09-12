@@ -11,7 +11,7 @@
     "DayyBreak66": {
       "NameColor": "Rainbow",
       "DisplayName": "DayDay",
-      "Banner": "DayyBreak66_banner_20260912022005_anim.png",
+      "Banner": "DayyBreak66_banner_20260912022510_anim.png",
       "Border": "Gold",
       "Logo": "DayyBreak66_logo_20260912010410_anim.png",
       "Role": "Owner",
@@ -26,7 +26,7 @@
       },
       "LogoRotationEnabled": true,
       "BannerAnimation": {
-        "SpriteSheet": "DayyBreak66_banner_20260912022005_anim.png",
+        "SpriteSheet": "DayyBreak66_banner_20260912022510_anim.png",
         "FrameWidth": 560,
         "FrameHeight": 150,
         "Columns": 7,
