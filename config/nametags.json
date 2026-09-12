@@ -11,7 +11,7 @@
     "DayyBreak66": {
       "NameColor": "Rainbow",
       "DisplayName": "DayDay",
-      "Banner": "DayyBreak66_banner_20260912022510_anim.png",
+      "Banner": "DayyBreak66_banner_20260912023524_frame_01.png",
       "Border": "Gold",
       "Logo": "DayyBreak66_logo_20260912010410_anim.png",
       "Role": "Owner",
@@ -26,11 +26,28 @@
       },
       "LogoRotationEnabled": true,
       "BannerAnimation": {
-        "SpriteSheet": "DayyBreak66_banner_20260912022510_anim.png",
+        "Frames": [
+          "DayyBreak66_banner_20260912023524_frame_01.png",
+          "DayyBreak66_banner_20260912023524_frame_02.png",
+          "DayyBreak66_banner_20260912023524_frame_03.png",
+          "DayyBreak66_banner_20260912023524_frame_04.png",
+          "DayyBreak66_banner_20260912023524_frame_05.png",
+          "DayyBreak66_banner_20260912023524_frame_06.png",
+          "DayyBreak66_banner_20260912023524_frame_07.png",
+          "DayyBreak66_banner_20260912023524_frame_08.png",
+          "DayyBreak66_banner_20260912023524_frame_09.png",
+          "DayyBreak66_banner_20260912023524_frame_10.png",
+          "DayyBreak66_banner_20260912023524_frame_11.png",
+          "DayyBreak66_banner_20260912023524_frame_12.png",
+          "DayyBreak66_banner_20260912023524_frame_13.png",
+          "DayyBreak66_banner_20260912023524_frame_14.png",
+          "DayyBreak66_banner_20260912023524_frame_15.png",
+          "DayyBreak66_banner_20260912023524_frame_16.png",
+          "DayyBreak66_banner_20260912023524_frame_17.png",
+          "DayyBreak66_banner_20260912023524_frame_18.png"
+        ],
         "FrameWidth": 560,
         "FrameHeight": 150,
-        "Columns": 7,
-        "Rows": 3,
         "FrameCount": 18,
         "FPS": 15
       }
